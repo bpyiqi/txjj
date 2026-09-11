@@ -115,16 +115,19 @@ def _metrics(source) -> dict[str, float]:
     return {key: float(value) for key, value in source.results_dict.items()}
 
 
-def train(dataset: Path, epochs: int, device: str | None, image_size: int, batch: int) -> dict:
+def train(dataset: Path, epochs: int, device: str | None, image_size: int, batch: int, base_model: str) -> dict:
     from ultralytics import YOLO
 
     audit = audit_dataset(dataset)
     dataset_yaml = write_dataset_yaml(dataset)
-    model = YOLO("yolo26n.pt")
+    model = YOLO(base_model)
     result = model.train(
         data=str(dataset_yaml), epochs=epochs, imgsz=image_size, batch=batch,
         workers=0, device=device, project=str(MODEL_DIR / "training_runs"),
-        name="safety_ppe", exist_ok=True, seed=42, deterministic=True, plots=True,
+        name=f"safety_ppe_{Path(base_model).stem}", exist_ok=True, seed=42, deterministic=True, plots=True,
+        patience=10, pretrained=True, optimizer="AdamW", lr0=0.001, lrf=0.01,
+        weight_decay=0.0005, warmup_epochs=3, cos_lr=True, degrees=10.0,
+        translate=0.1, scale=0.5, fliplr=0.5, mosaic=1.0, mixup=0.1,
     )
     best = Path(result.save_dir) / "weights" / "best.pt"
     if not best.exists():
@@ -133,12 +136,16 @@ def train(dataset: Path, epochs: int, device: str | None, image_size: int, batch
     validation_metrics = trained.val(data=str(dataset_yaml), split="val", device=device, workers=0, imgsz=image_size)
     test_metrics = trained.val(data=str(dataset_yaml), split="test", device=device, workers=0, imgsz=image_size)
     target = MODEL_DIR / "safety_ppe_yolo.pt"
+    variant_target = MODEL_DIR / f"safety_ppe_{Path(base_model).stem}.pt"
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     shutil.copy2(best, target)
+    shutil.copy2(best, variant_target)
     summary = {
         "trained_at": datetime.now().astimezone().isoformat(timespec="seconds"),
-        "base_model": "yolo26n.pt",
+        "base_model": base_model,
+        "baseline_reference": "https://github.com/vamsiprasanth/constructionsafety",
         "weights": target.relative_to(ROOT).as_posix(),
+        "variant_weights": variant_target.relative_to(ROOT).as_posix(),
         "epochs": epochs,
         "image_size": image_size,
         "batch": batch,
@@ -150,8 +157,10 @@ def train(dataset: Path, epochs: int, device: str | None, image_size: int, batch
         "business_classes": ["Person", "helmet", "vest", "no_helmet"],
         "scope": "安全监管独立模型；仅明确检测到 no_helmet 时生成未戴安全帽风险",
     }
-    (MODEL_DIR / "safety_ppe_training_summary.json").write_text(
-        json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
+    summary_text = json.dumps(summary, ensure_ascii=False, indent=2)
+    (MODEL_DIR / "safety_ppe_training_summary.json").write_text(summary_text, encoding="utf-8")
+    (MODEL_DIR / f"safety_ppe_training_summary_{Path(base_model).stem}.json").write_text(
+        summary_text, encoding="utf-8"
     )
     return summary
 
@@ -164,6 +173,7 @@ if __name__ == "__main__":
     parser.add_argument("--device", default=None, help="例如 0 或 cpu；默认自动选择")
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--batch", type=int, default=8)
+    parser.add_argument("--model", choices=["yolov8n.pt", "yolov8s.pt"], default="yolov8n.pt")
     parser.add_argument("--check-only", action="store_true")
     args = parser.parse_args()
     source = find_dataset(args.data)
@@ -173,4 +183,4 @@ if __name__ == "__main__":
     else:
         if args.epochs < 1:
             raise ValueError("训练轮数必须至少为 1")
-        print(json.dumps(train(source, args.epochs, args.device, args.imgsz, args.batch), ensure_ascii=False, indent=2))
+        print(json.dumps(train(source, args.epochs, args.device, args.imgsz, args.batch, args.model), ensure_ascii=False, indent=2))

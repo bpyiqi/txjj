@@ -4,6 +4,7 @@ import argparse
 import json
 import mimetypes
 import re
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -28,7 +29,7 @@ async function openItem(id){const item=state.items.find(x=>x.id===id);if(!item)r
 function draw(){const stage=$('stage');stage.querySelectorAll('.box').forEach(x=>x.remove());state.boxes.forEach((b,i)=>{const el=document.createElement('div');el.className='box '+(i===state.selected?'selected':'');el.style.left=(b.x*100)+'%';el.style.top=(b.y*100)+'%';el.style.width=(b.w*100)+'%';el.style.height=(b.h*100)+'%';el.innerHTML=`<span>${state.classes[b.class_id]||b.class_id}</span>`;el.onclick=e=>{e.stopPropagation();state.selected=i;draw()};stage.appendChild(el)});$('boxes').innerHTML=state.boxes.map((b,i)=>`<div class="box-row"><span>${i+1}. ${esc(state.classes[b.class_id]||b.class_id)}</span><span>${Math.round(b.w*100)}%×${Math.round(b.h*100)}%</span><button data-remove="${i}">删除</button></div>`).join('');document.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{state.boxes.splice(+b.dataset.remove,1);state.selected=-1;draw()})}
 function point(e){const r=$('stage').getBoundingClientRect();return{x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height))}}
 $('stage').onmousedown=e=>{if(e.target!==$('image')&&e.target!==$('stage'))return;state.drag=point(e)};$('stage').onmouseup=e=>{if(!state.drag)return;const end=point(e),x=Math.min(state.drag.x,end.x),y=Math.min(state.drag.y,end.y),w=Math.abs(end.x-state.drag.x),h=Math.abs(end.y-state.drag.y);state.drag=null;if(w>.01&&h>.01){state.boxes.push({class_id:state.activeClass,x,y,w,h});state.selected=state.boxes.length-1;draw()}};
-async function save(){if(!state.current)return;await api('/api/labels/'+encodeURIComponent(state.current.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({boxes:state.boxes})});state.current.annotated=state.boxes.length>0;toast('标注已保存');filter()}
+async function save(){if(!state.current)return;await api('/api/labels/'+encodeURIComponent(state.current.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({boxes:state.boxes})});state.current.annotated=true;toast(state.boxes.length?'标注已保存':'已确认当前图片无目标');filter()}
 $('save').onclick=save;$('search').oninput=filter;$('split').onchange=filter;$('status').onchange=filter;$('prev').onclick=()=>{const i=state.filtered.findIndex(x=>x.id===state.current?.id);if(i>0)openItem(state.filtered[i-1].id)};$('next').onclick=()=>{const i=state.filtered.findIndex(x=>x.id===state.current?.id);if(i<state.filtered.length-1)openItem(state.filtered[i+1].id)};load().catch(e=>toast(e.message));
 </script></body></html>'''
 
@@ -38,8 +39,8 @@ def _load_manifest() -> dict:
         raise FileNotFoundError("请先运行 training/prepare_expanded_dataset.py")
     payload = json.loads(MANIFEST.read_text(encoding="utf-8"))
     for item in payload["images"]:
-        item["annotated"] = (ROOT / item["label_path"]).exists() and bool(
-            (ROOT / item["label_path"]).read_text(encoding="utf-8").strip()
+        item["annotated"] = (DATASET / "reviews" / item["split"] / f"{item['id']}.json").exists() or (
+            (ROOT / item["label_path"]).exists() and bool((ROOT / item["label_path"]).read_text(encoding="utf-8").strip())
         )
     return payload
 
@@ -72,6 +73,12 @@ class Handler(BaseHTTPRequestHandler):
             if match:
                 item = _item(match.group(1))
                 label_path = ROOT / item["label_path"]
+                candidate = False
+                if not label_path.exists():
+                    candidate_path = DATASET / "candidate_labels" / item["split"] / f"{item['id']}.txt"
+                    if candidate_path.exists():
+                        label_path = candidate_path
+                        candidate = bool(label_path.read_text(encoding="utf-8").strip())
                 boxes = []
                 if label_path.exists():
                     for line in label_path.read_text(encoding="utf-8").splitlines():
@@ -79,7 +86,7 @@ class Handler(BaseHTTPRequestHandler):
                         if len(parts) == 5:
                             class_id, cx, cy, width, height = map(float, parts)
                             boxes.append({"class_id": int(class_id), "x": cx - width / 2, "y": cy - height / 2, "w": width, "h": height})
-                self._send(200, "application/json; charset=utf-8", json.dumps({"boxes": boxes}).encode("utf-8"))
+                self._send(200, "application/json; charset=utf-8", json.dumps({"boxes": boxes, "candidate": candidate}).encode("utf-8"))
                 return
             match = re.fullmatch(r"/media/([^/]+)/(.+)", parsed.path)
             if match:
@@ -111,10 +118,13 @@ class Handler(BaseHTTPRequestHandler):
                 lines.append(f"{class_id} {x + width / 2:.6f} {y + height / 2:.6f} {width:.6f} {height:.6f}")
             label_path = ROOT / item["label_path"]
             label_path.parent.mkdir(parents=True, exist_ok=True)
-            if lines:
-                label_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-            elif label_path.exists():
-                label_path.unlink()
+            label_path.write_text(("\n".join(lines) + "\n") if lines else "", encoding="utf-8")
+            review_path = DATASET / "reviews" / item["split"] / f"{item['id']}.json"
+            review_path.parent.mkdir(parents=True, exist_ok=True)
+            review_path.write_text(json.dumps({
+                "status": "human_reviewed", "box_count": len(lines),
+                "reviewed_at": datetime.now().astimezone().isoformat(timespec="seconds"),
+            }, ensure_ascii=False, indent=2), encoding="utf-8")
             self._send(200, "application/json; charset=utf-8", json.dumps({"saved": True, "box_count": len(lines)}).encode("utf-8"))
         except (FileNotFoundError, KeyError, ValueError, json.JSONDecodeError) as exc:
             self._send(400, "application/json; charset=utf-8", json.dumps({"detail": str(exc)}).encode("utf-8"))
@@ -151,7 +161,6 @@ def _render_html() -> str:
   };
   saveButton.onclick=async()=>{
     if(!state.current)return;
-    if(!state.boxes.length){toast('请先在图片上拖出至少一个目标框');return}
     try{await save()}catch(error){toast('保存失败：'+error.message)}
   };
   updateSaveState();

@@ -1,0 +1,98 @@
+{
+  "trained_at": "2026-09-11T03:31:59+08:00",
+  "base_model": "yolo26n.pt",
+  "weights": "backend/models/safety_ppe_yolo.pt",
+  "epochs": 50,
+  "image_size": 640,
+  "batch": 8,
+  "device": "auto",
+  "dataset": {
+    "dataset_path": "E:\\桌面\\挑战杯\\construction-ppe",
+    "license": "AGPL-3.0",
+    "classes": [
+      "helmet",
+      "gloves",
+      "vest",
+      "boots",
+      "goggles",
+      "none",
+      "Person",
+      "no_helmet",
+      "no_goggle",
+      "no_gloves",
+      "no_boots"
+    ],
+    "splits": {
+      "train": {
+        "images": 1132,
+        "labels": 1142,
+        "boxes": 9191,
+        "images_without_label": [],
+        "labels_without_image": [
+          "image940(1)",
+          "image941(1)",
+          "image944(1)",
+          "image945(1)",
+          "image946(1)",
+          "image947(1)",
+          "image948(1)",
+          "image949(1)",
+          "image95(1)",
+          "image950(1)"
+        ]
+      },
+      "val": {
+        "images": 143,
+        "labels": 143,
+        "boxes": 1172,
+        "images_without_label": [],
+        "labels_without_image": []
+      },
+      "test": {
+        "images": 141,
+        "labels": 141,
+        "boxes": 1251,
+        "images_without_label": [],
+        "labels_without_image": []
+      }
+    },
+    "class_box_counts": {
+      "helmet": 1750,
+      "gloves": 1461,
+      "vest": 1632,
+      "boots": 1613,
+      "goggles": 526,
+      "none": 800,
+      "Person": 2265,
+      "no_helmet": 485,
+      "no_goggle": 411,
+      "no_gloves": 556,
+      "no_boots": 115
+    },
+    "image_count": 1416,
+    "box_count": 11614,
+    "invalid_labels": []
+  },
+  "dataset_yaml_sha256": "021153c7c0794f07d65514850e2fd40354c5982e33e5336f78de71671b2ead38",
+  "validation_metrics": {
+    "metrics/precision(B)": 0.612753199977917,
+    "metrics/recall(B)": 0.6213048144514478,
+    "metrics/mAP50(B)": 0.6240482706806726,
+    "metrics/mAP50-95(B)": 0.3006564444210344,
+    "fitness": 0.3006564444210344
+  },
+  "test_metrics": {
+    "metrics/precision(B)": 0.6315183562828708,
+    "metrics/recall(B)": 0.5281970445158328,
+    "metrics/mAP50(B)": 0.5454418761005325,
+    "metrics/mAP50-95(B)": 0.2710406638716201,
+    "fitness": 0.2710406638716201
+  },
+  "business_classes": [
+    "Person",
+    "helmet",
+    "vest",
+    "no_helmet"
+  ],
+  "scope": "安全监管独立模型；仅明确检测到 no_helmet 时生成未戴安全帽风险"
+}

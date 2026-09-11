@@ -35,7 +35,7 @@
 .venv\Scripts\python.exe training\train_safety_yolo.py --check-only
 ```
 
-开始训练（默认 50 轮）：
+快速建立 YOLOv8n 基线（默认 50 轮）：
 
 ```cmd
 06_TRAIN_SAFETY_YOLO.cmd
@@ -47,11 +47,19 @@
 06_TRAIN_SAFETY_YOLO.cmd 5
 ```
 
+建立 YOLOv8s 对照基线：
+
+```cmd
+06_TRAIN_SAFETY_YOLO.cmd 50 yolov8s.pt
+```
+
+训练配置参考 `vamsiprasanth/constructionsafety` 的 YOLOv8 安全检测路线，使用 AdamW、640像素、早停和独立测试集评估；数据仍使用本地 `construction-ppe` 的原始11类定义，不混用参考仓库的10类编号。
+
 训练输出：
 
 - `backend/models/safety_ppe_yolo.pt`：安全监管独立权重；
 - `backend/models/safety_ppe_training_summary.json`：数据审计、验证集指标和独立测试集指标；
-- `backend/models/training_runs/safety_ppe/`：训练曲线、混淆矩阵和中间权重。
+- `backend/models/training_runs/safety_ppe_yolov8n/` 或 `safety_ppe_yolov8s/`：训练曲线、混淆矩阵和中间权重。
 
 平台使用人员、安全帽、反光背心、未戴安全帽四类结果。只有模型明确检测到 `no_helmet` 时才生成安全违规，不以“没有检测到安全帽”反推违规。
 
@@ -64,3 +72,7 @@
 ```
 
 浏览器打开 `http://127.0.0.1:8765`。候选类别只作提示，必须人工画框并保存。测试视频不会进入训练集或验证集；合并训练时运行 `training/build_video_training_dataset.py`，只有人工标注过的图片会被纳入。
+
+全部283张复核完成后运行 `07B_FREEZE_VIDEO_DATASET.cmd`。冻结程序会校验每张图片的复核记录和YOLO标签，并生成 `frozen_split_manifest.json`；缺少任何一张都会拒绝冻结。
+
+安全业务评测先在 `safety_business_ground_truth.csv` 填写116张测试图的事件真值，再运行 `08_EVALUATE_SAFETY_BUSINESS.cmd`。参赛证据归档运行 `09_BUILD_RELEASE_EVIDENCE.cmd`，缺失材料会进入 `release_evidence/data_manifest/missing_items.json`，不会自动伪造。

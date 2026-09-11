@@ -7,13 +7,11 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from prepare_expanded_dataset import CLASSES
-
-
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIR = ROOT.parents[1]
 DATASET = ROOT / "datasets" / "challenge_video_construction"
 HOLDOUT = "fd4737c5ce424df8061a4d8d2176d460.mp4"
+CLASSES = ["blowing_machine", "cable_reel", "fusion_splicer"]
 VIDEOS = {
     "1e7fb7bcca75a6da31224c7d5b74e0e4.mp4": ("air_blowing", 1.0, ["blowing_machine", "fiber_cable"]),
     "53d8f3cd412e0ec335240a774df4347e.mp4": ("air_blowing", 1.0, ["blowing_machine", "cable_reel"]),

@@ -139,6 +139,7 @@ def main() -> int:
     parser.add_argument("--self-check", action="store_true")
     parser.add_argument("--train", type=int, metavar="EPOCHS")
     parser.add_argument("--train-safety", type=int, metavar="EPOCHS")
+    parser.add_argument("--safety-model", choices=["yolov8n.pt", "yolov8s.pt"], default="yolov8n.pt")
     parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
 
@@ -160,6 +161,8 @@ def main() -> int:
             str(ROOT / "training" / "train_safety_yolo.py"),
             "--epochs",
             str(args.train_safety),
+            "--model",
+            args.safety_model,
         ]
     elif args.train is not None:
         if args.train < 1:
