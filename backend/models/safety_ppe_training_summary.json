@@ -7,7 +7,7 @@
   "batch": 8,
   "device": "auto",
   "dataset": {
-    "dataset_path": "E:\\桌面\\挑战杯\\construction-ppe",
+    "dataset_path": "../construction-ppe",
     "license": "AGPL-3.0",
     "classes": [
       "helmet",

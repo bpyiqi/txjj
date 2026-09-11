@@ -7,7 +7,7 @@
   "image_size": 320,
   "device": "cpu",
   "dataset": {
-    "dataset": "E:\\桌面\\挑战杯\\VeriBuild_AirBlowing_Demo\\datasets\\construction_objects",
+    "dataset": "datasets/construction_objects",
     "sample_count": 16,
     "train_count": 13,
     "val_count": 3,

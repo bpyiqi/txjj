@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 
 from training.evaluate_safety_business import metrics
+from training.freeze_challenge_dataset import validate_label_line
 
 
 def test_business_metrics_are_calculated_from_counts():
@@ -22,3 +23,9 @@ def test_new_video_split_is_source_isolated():
     assert sum(item["split"] == "test" for item in manifest["images"]) == 116
     assert all(Path(item["source_video"]).name != holdout for item in manifest["images"] if item["split"] == "train")
     assert all(Path(item["source_video"]).name == holdout for item in manifest["images"] if item["split"] == "test")
+
+
+def test_frozen_labels_reject_boxes_outside_image():
+    assert validate_label_line("1 0.5 0.5 0.4 0.4", Path("sample.txt"), 1, 3) == 1
+    with pytest.raises(ValueError, match="超出图片"):
+        validate_label_line("1 0.1 0.5 0.4 0.4", Path("sample.txt"), 2, 3)

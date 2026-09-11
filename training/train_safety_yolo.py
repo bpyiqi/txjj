@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import os
 import shutil
 from collections import Counter
 from datetime import datetime
@@ -83,7 +84,7 @@ def audit_dataset(dataset: Path) -> dict:
             "labels_without_image": sorted(set(labels) - set(images)),
         }
     result = {
-        "dataset_path": str(dataset),
+        "dataset_path": Path(os.path.relpath(dataset, ROOT)).as_posix(),
         "license": "AGPL-3.0",
         "classes": CLASSES,
         "splits": split_stats,
@@ -115,7 +116,10 @@ def _metrics(source) -> dict[str, float]:
     return {key: float(value) for key, value in source.results_dict.items()}
 
 
-def train(dataset: Path, epochs: int, device: str | None, image_size: int, batch: int, base_model: str) -> dict:
+def train(
+    dataset: Path, epochs: int, device: str | None, image_size: int, batch: int,
+    base_model: str, evaluate_test: bool = False,
+) -> dict:
     from ultralytics import YOLO
 
     audit = audit_dataset(dataset)
@@ -134,7 +138,10 @@ def train(dataset: Path, epochs: int, device: str | None, image_size: int, batch
         raise FileNotFoundError("训练完成但未找到 best.pt")
     trained = YOLO(str(best))
     validation_metrics = trained.val(data=str(dataset_yaml), split="val", device=device, workers=0, imgsz=image_size)
-    test_metrics = trained.val(data=str(dataset_yaml), split="test", device=device, workers=0, imgsz=image_size)
+    test_metrics = (
+        trained.val(data=str(dataset_yaml), split="test", device=device, workers=0, imgsz=image_size)
+        if evaluate_test else None
+    )
     target = MODEL_DIR / "safety_ppe_yolo.pt"
     variant_target = MODEL_DIR / f"safety_ppe_{Path(base_model).stem}.pt"
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -150,10 +157,16 @@ def train(dataset: Path, epochs: int, device: str | None, image_size: int, batch
         "image_size": image_size,
         "batch": batch,
         "device": device or "auto",
+        "optimizer": "AdamW",
+        "patience": 10,
+        "cos_lr": True,
+        "checkpoint_selection": "best_validation_checkpoint",
+        "test_evaluation_requested": evaluate_test,
         "dataset": audit,
         "dataset_yaml_sha256": hashlib.sha256(dataset_yaml.read_bytes()).hexdigest(),
         "validation_metrics": _metrics(validation_metrics),
-        "test_metrics": _metrics(test_metrics),
+        "test_metrics": _metrics(test_metrics) if test_metrics else None,
+        "experiment_protocol": "模型与阈值仅依据验证集选择；独立测试仅在最终模型冻结后执行一次",
         "business_classes": ["Person", "helmet", "vest", "no_helmet"],
         "scope": "安全监管独立模型；仅明确检测到 no_helmet 时生成未戴安全帽风险",
     }
@@ -174,6 +187,7 @@ if __name__ == "__main__":
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--batch", type=int, default=8)
     parser.add_argument("--model", choices=["yolov8n.pt", "yolov8s.pt"], default="yolov8n.pt")
+    parser.add_argument("--evaluate-test", action="store_true", help="仅最终模型冻结时启用一次")
     parser.add_argument("--check-only", action="store_true")
     args = parser.parse_args()
     source = find_dataset(args.data)
@@ -183,4 +197,7 @@ if __name__ == "__main__":
     else:
         if args.epochs < 1:
             raise ValueError("训练轮数必须至少为 1")
-        print(json.dumps(train(source, args.epochs, args.device, args.imgsz, args.batch, args.model), ensure_ascii=False, indent=2))
+        print(json.dumps(
+            train(source, args.epochs, args.device, args.imgsz, args.batch, args.model, args.evaluate_test),
+            ensure_ascii=False, indent=2,
+        ))

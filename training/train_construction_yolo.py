@@ -22,7 +22,7 @@ def _publish(best: Path, epochs: int, device: str | None, dataset: dict, metrics
         "trained_at": datetime.now().astimezone().isoformat(timespec="seconds"),
         "base_model": "yolo26n.pt",
         "weights": target.relative_to(ROOT).as_posix(),
-        "weight_selection": "last_epoch_for_demo_calibration",
+        "weight_selection": "best_validation_checkpoint",
         "epochs": epochs,
         "image_size": image_size,
         "device": device or "auto",
@@ -39,7 +39,7 @@ def train(epochs: int, device: str | None, publish_existing: bool = False, image
     from ultralytics import YOLO
 
     dataset = build_dataset()
-    existing = MODEL_DIR / "training_runs" / "construction_objects" / "weights" / "last.pt"
+    existing = MODEL_DIR / "training_runs" / "construction_objects" / "weights" / "best.pt"
     if publish_existing:
         if not existing.exists():
             raise FileNotFoundError("没有可发布的已训练权重")
@@ -63,7 +63,9 @@ def train(epochs: int, device: str | None, publish_existing: bool = False, image
         plots=True,
         freeze=10,
     )
-    final_weights = Path(result.save_dir) / "weights" / "last.pt"
+    final_weights = Path(result.save_dir) / "weights" / "best.pt"
+    if not final_weights.exists():
+        raise FileNotFoundError("训练完成但未找到 best.pt")
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     metrics = YOLO(str(final_weights)).val(data=str(DATASET / "dataset.yaml"), device=device, workers=0, imgsz=image_size)
     return _publish(final_weights, epochs, device, dataset, metrics, image_size)

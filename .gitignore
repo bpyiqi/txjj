@@ -19,3 +19,6 @@ datasets/
 backend/uploads/
 backend/models/training_runs/
 demo_air_blowing/output/
+
+# Base checkpoints are downloaded on demand. Published project models live in backend/models/.
+/*.pt

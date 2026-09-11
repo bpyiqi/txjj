@@ -27,14 +27,8 @@ if not errorlevel 1 (
 )
 
 for /f "delims=" %%P in ('where python 2^>nul') do call :try_python "%%P"
-if defined VERIBUILD_PYTHON (
-  "%VERIBUILD_PYTHON%" bootstrap_windows.py %BOOTSTRAP_ARGS%
-  exit /b !ERRORLEVEL!
-)
-
-for %%P in ("D:\python312\python.exe" "%USERPROFILE%\anaconda3\python.exe" "%USERPROFILE%\miniconda3\python.exe" "D:\Anaconda\python.exe" "C:\ProgramData\Anaconda3\python.exe") do call :try_python "%%~P"
-if defined VERIBUILD_PYTHON (
-  "%VERIBUILD_PYTHON%" bootstrap_windows.py %BOOTSTRAP_ARGS%
+if defined PROJECT_PYTHON (
+  "%PROJECT_PYTHON%" bootstrap_windows.py %BOOTSTRAP_ARGS%
   exit /b !ERRORLEVEL!
 )
 
@@ -43,8 +37,8 @@ echo Install Python 3.11 or 3.12, then run this file again.
 exit /b 1
 
 :try_python
-if defined VERIBUILD_PYTHON exit /b 0
+if defined PROJECT_PYTHON exit /b 0
 if not exist "%~1" exit /b 0
 "%~1" -c "import sys; raise SystemExit(0 if sys.version_info >= (3,11) else 1)" >nul 2>nul
-if not errorlevel 1 set "VERIBUILD_PYTHON=%~1"
+if not errorlevel 1 set "PROJECT_PYTHON=%~1"
 exit /b 0

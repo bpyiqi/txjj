@@ -2,7 +2,7 @@
   "trained_at": "2026-09-09T18:09:18+08:00",
   "weights": "backend/models/construction_yolo_combined.pt",
   "dataset": {
-    "dataset": "D:\\GIS\\new\\VeriBuild_AirBlowing_Demo\\datasets\\video_construction_combined",
+    "dataset": "datasets/video_construction_combined",
     "classes": [
       "blowing_machine",
       "cable_reel",

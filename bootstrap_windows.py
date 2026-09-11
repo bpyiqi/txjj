@@ -140,6 +140,7 @@ def main() -> int:
     parser.add_argument("--train", type=int, metavar="EPOCHS")
     parser.add_argument("--train-safety", type=int, metavar="EPOCHS")
     parser.add_argument("--safety-model", choices=["yolov8n.pt", "yolov8s.pt"], default="yolov8n.pt")
+    parser.add_argument("--run", nargs=argparse.REMAINDER, metavar="COMMAND")
     parser.add_argument("--host", default="127.0.0.1")
     args = parser.parse_args()
 
@@ -153,7 +154,9 @@ def main() -> int:
     if status:
         return status
 
-    if args.train_safety is not None:
+    if args.run:
+        command = [sys.executable, *args.run]
+    elif args.train_safety is not None:
         if args.train_safety < 1:
             return fail("Training epochs must be at least 1.")
         command = [

@@ -15,7 +15,7 @@
 在项目根目录执行：
 
 ```powershell
-cd D:\GIS\new\VeriBuild_AirBlowing_Demo
+cd <项目目录>
 .\.venv\Scripts\python.exe training\prepare_expanded_dataset.py
 .\.venv\Scripts\python.exe tools\annotation_server.py
 ```

@@ -72,7 +72,7 @@
 
 ## 测试结果
 
-- `D:\python312\python.exe -m pytest -q`：`19 passed`，`2 warnings`（上游测试组件弃用提示）。
+- `python -m pytest -q`：`19 passed`，`2 warnings`（上游测试组件弃用提示）。
 - 覆盖原有图片上传、视频抽帧、人工关联、规则复验、问题处置、Excel/PDF/ZIP 导出。
 - 覆盖气吹光缆和光纤熔接现有分析器。
 - 覆盖施工数据上传、任务绑定、影像分析、真实统计、证据关联和工程对象台账。

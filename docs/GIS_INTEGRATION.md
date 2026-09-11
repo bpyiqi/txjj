@@ -33,7 +33,7 @@ objects + gis_features
 ## 运行方式
 
 ```powershell
-cd D:\GIS\new\VeriBuild_AirBlowing_Demo
+cd <项目目录>
 python run.py
 ```
 
