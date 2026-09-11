@@ -1,0 +1,18 @@
+{
+  "video_id": "BV1k5411P7qE",
+  "title": "【光通信】光纤熔接视频教程 熔接光纤就是这么简单！",
+  "source_url": "https://www.bilibili.com/video/BV1k5411P7qE/",
+  "duration_seconds": 174.961701,
+  "video_path": "demo_air_blowing/input/BV1k5411P7qE.mp4",
+  "samples": [
+    {"timestamp": 19.2, "ground_truth_stage": "fiber_stripping", "detected_objects": [{"label": "fiber", "confidence": 0.93}, {"label": "technician", "confidence": 0.96}]},
+    {"timestamp": 35.0, "ground_truth_stage": "fiber_stripping", "detected_objects": [{"label": "fiber", "confidence": 0.95}, {"label": "technician", "confidence": 0.97}]},
+    {"timestamp": 52.0, "ground_truth_stage": "fiber_cleaning", "detected_objects": [{"label": "fiber", "confidence": 0.92}, {"label": "technician", "confidence": 0.96}]},
+    {"timestamp": 70.0, "ground_truth_stage": "fiber_cleaving", "detected_objects": [{"label": "fiber", "confidence": 0.94}, {"label": "technician", "confidence": 0.95}]},
+    {"timestamp": 89.2, "ground_truth_stage": "fusion_splicing", "detected_objects": [{"label": "fusion_splicer", "confidence": 0.97}, {"label": "fiber", "confidence": 0.91}, {"label": "technician", "confidence": 0.96}]},
+    {"timestamp": 110.2, "ground_truth_stage": "fusion_splicing", "detected_objects": [{"label": "fusion_splicer", "confidence": 0.98}, {"label": "fiber", "confidence": 0.88}]},
+    {"timestamp": 129.5, "ground_truth_stage": "fiber_organizing", "detected_objects": [{"label": "fusion_splicer", "confidence": 0.94}, {"label": "fiber", "confidence": 0.93}, {"label": "protection_sleeve", "confidence": 0.88}, {"label": "technician", "confidence": 0.97}]},
+    {"timestamp": 150.5, "ground_truth_stage": "fiber_organizing", "detected_objects": [{"label": "fusion_splicer", "confidence": 0.98}, {"label": "fiber", "confidence": 0.91}, {"label": "protection_sleeve", "confidence": 0.82}]},
+    {"timestamp": 164.5, "ground_truth_stage": "fiber_organizing", "detected_objects": [{"label": "fusion_splicer", "confidence": 0.97}, {"label": "fiber", "confidence": 0.86}, {"label": "technician", "confidence": 0.95}]}
+  ]
+}

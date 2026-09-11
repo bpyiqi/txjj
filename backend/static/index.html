@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#102A43">
+  <title>面向通信基建施工全过程的多源感知监管与数字化验真交付系统</title>
+  <link rel="stylesheet" href="/styles.css?v=20260910-4">
+  <link rel="stylesheet" href="/ui-overrides.css?v=20260910-4">
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark">✓</div><div><strong>通信基建全过程监管</strong></div></div>
+    <div class="project-chip"><span class="chip-icon">⌖</span><div><small>当前场景</small><strong id="sidebar-scenario">通信基建施工现场</strong></div></div>
+    <nav id="nav">
+      <button data-route="dashboard" class="active"><span>▦</span>项目驾驶舱</button>
+      <button data-route="collection"><span>↑</span>施工数据采集中心</button>
+      <button data-route="analysis"><span>▶</span>施工影像分析中心</button>
+      <button data-route="verification"><span>✓</span>智能验真工作台</button>
+      <button data-route="evidence"><span>▣</span>影像证据中心</button>
+      <button data-route="ledger"><span>☷</span>工程对象台账</button>
+      <button data-route="issues"><span>!</span>问题处置中心</button>
+      <button data-route="delivery"><span>⇩</span>数字交付中心</button>
+    </nav>
+    <button id="audit-btn" class="audit-entry"><span>◫</span><div><b>数据来源与审计</b><small id="data-version">工程数据集</small></div></button>
+  </aside>
+  <main class="main-shell">
+    <header class="topbar">
+      <div><strong id="project-name">通信接入网建设项目</strong></div>
+      <div class="top-actions">
+        <div class="sync-state"><i></i><span>数据已同步<small id="updated-at">--</small></span></div>
+        <div class="export-menu-wrap"><button id="export-btn" class="btn primary">数字交付 <span>⌄</span></button><div id="export-menu" class="export-menu hidden"><a href="/api/exports/excel">导出 Excel 验真数据</a><a href="/api/exports/pdf">导出 PDF 验真报告</a><hr><a href="/api/exports/archive">生成 ZIP 数字交付档案</a></div></div>
+        <div class="avatar">PM</div>
+      </div>
+    </header>
+    <section id="page" class="page"></section>
+  </main>
+</div>
+<div id="drawer-backdrop" class="backdrop hidden"></div>
+<aside id="drawer" class="drawer"><div class="drawer-head"><h2 id="drawer-title">详情</h2><button id="drawer-close">×</button></div><div id="drawer-body" class="drawer-body"></div></aside>
+<div id="modal-backdrop" class="backdrop hidden"></div>
+<div id="modal" class="modal hidden"><div class="modal-head"><h2 id="modal-title">操作</h2><button id="modal-close">×</button></div><div id="modal-body" class="modal-body"></div><div id="modal-actions" class="modal-actions"></div></div>
+<div id="toast" class="toast hidden"></div>
+<script type="module" src="/app.js?v=20260910-5"></script>
+</body>
+</html>

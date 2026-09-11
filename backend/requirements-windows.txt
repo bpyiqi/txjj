@@ -1,0 +1,8 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# Pin the Windows CPU runtime to a tested pair. Newer automatically-resolved
+# PyTorch wheels have failed to load c10.dll on some Anaconda installations.
+torch==2.5.1+cpu
+torchvision==0.20.1+cpu
+
+-r requirements.txt

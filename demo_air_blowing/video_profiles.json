@@ -1,0 +1,40 @@
+{
+  "videos": [
+    {
+      "video_id": "BV1Ld4y1X7AA",
+      "title": "高速气吹光缆，吹缆施工，新建高速吹缆，硅芯管吹缆施工。",
+      "source_url": "https://www.bilibili.com/video/BV1Ld4y1X7AA/",
+      "duration_seconds": 17.15932,
+      "video_path": "demo_air_blowing/input/BV1Ld4y1X7AA.mp4",
+      "engineering_object": {"object_id": "EXPWY-FOC-SEG-A01", "object_type": "optical_cable_segment", "route": "高速公路通信管道A段"},
+      "samples": [
+        {"timestamp": 2, "frame_path": "demo_air_blowing/frames/BV1Ld4y1X7AA/frame_002s.png", "ground_truth_stage": "equipment_setup", "detected_objects": [{"label":"worker","confidence":0.91},{"label":"safety_helmet","confidence":0.86},{"label":"blowing_machine","confidence":0.84},{"label":"air_compressor","confidence":0.82}]},
+        {"timestamp": 4, "frame_path": "demo_air_blowing/frames/BV1Ld4y1X7AA/frame_004s.png", "ground_truth_stage": "cable_loading", "detected_objects": [{"label":"fiber_cable","confidence":0.9},{"label":"cable_reel","confidence":0.93},{"label":"worker","confidence":0.8},{"label":"safety_helmet","confidence":0.76}]},
+        {"timestamp": 6, "frame_path": "demo_air_blowing/frames/BV1Ld4y1X7AA/frame_006s.png", "ground_truth_stage": "blowing_process", "detected_objects": [{"label":"blowing_machine","confidence":0.95},{"label":"fiber_cable","confidence":0.85}]},
+        {"timestamp": 8, "frame_path": "demo_air_blowing/frames/BV1Ld4y1X7AA/frame_008s.png", "ground_truth_stage": "blowing_process", "detected_objects": [{"label":"blowing_machine","confidence":0.94},{"label":"fiber_cable","confidence":0.88},{"label":"air_compressor","confidence":0.72}]},
+        {"timestamp": 10, "frame_path": "demo_air_blowing/frames/BV1Ld4y1X7AA/frame_010s.png", "ground_truth_stage": "blowing_process", "detected_objects": [{"label":"blowing_machine","confidence":0.96},{"label":"fiber_cable","confidence":0.9}]},
+        {"timestamp": 12, "frame_path": "demo_air_blowing/frames/BV1Ld4y1X7AA/frame_012s.png", "ground_truth_stage": "blowing_process", "detected_objects": [{"label":"fiber_cable","confidence":0.92},{"label":"blowing_machine","confidence":0.7}], "risk_detection": [{"risk":"exposed_cable_on_carriageway","severity":"medium","confidence":0.84,"status":"manual_review_required"}]},
+        {"timestamp": 14, "frame_path": "demo_air_blowing/frames/BV1Ld4y1X7AA/frame_014s.png", "ground_truth_stage": "completion_check", "detected_objects": [{"label":"fiber_cable","confidence":0.64},{"label":"air_compressor","confidence":0.76}]},
+        {"timestamp": 16, "frame_path": "demo_air_blowing/frames/BV1Ld4y1X7AA/frame_016s.png", "ground_truth_stage": "completion_check", "detected_objects": [{"label":"fiber_cable","confidence":0.7},{"label":"cable_reel","confidence":0.89},{"label":"worker","confidence":0.75}]}
+      ]
+    },
+    {
+      "video_id": "BV1u2Mv6METn",
+      "title": "高速公路通信工程吹缆施工现场实拍视频",
+      "source_url": "https://www.bilibili.com/video/BV1u2Mv6METn/",
+      "duration_seconds": 23.010975,
+      "video_path": "demo_air_blowing/input/BV1u2Mv6METn.mp4",
+      "engineering_object": {"object_id": "EXPWY-FOC-SEG-B01", "object_type": "optical_cable_segment", "route": "高速公路隧道通信管道B段"},
+      "samples": [
+        {"timestamp": 0, "frame_path": "demo_air_blowing/frames/BV1u2Mv6METn/frame_000s.png", "ground_truth_stage": "equipment_setup", "detected_objects": [{"label":"worker","confidence":0.92},{"label":"safety_helmet","confidence":0.94},{"label":"blowing_machine","confidence":0.78},{"label":"air_compressor","confidence":0.75},{"label":"fiber_cable","confidence":0.72}]},
+        {"timestamp": 3, "frame_path": "demo_air_blowing/frames/BV1u2Mv6METn/frame_003s.png", "ground_truth_stage": "cable_loading", "detected_objects": [{"label":"air_compressor","confidence":0.91},{"label":"cable_reel","confidence":0.8},{"label":"fiber_cable","confidence":0.82}]},
+        {"timestamp": 6, "frame_path": "demo_air_blowing/frames/BV1u2Mv6METn/frame_006s.png", "ground_truth_stage": "blowing_process", "detected_objects": [{"label":"blowing_machine","confidence":0.78},{"label":"fiber_cable","confidence":0.75}]},
+        {"timestamp": 9, "frame_path": "demo_air_blowing/frames/BV1u2Mv6METn/frame_009s.png", "ground_truth_stage": "blowing_process", "detected_objects": [{"label":"blowing_machine","confidence":0.93},{"label":"fiber_cable","confidence":0.89}]},
+        {"timestamp": 12, "frame_path": "demo_air_blowing/frames/BV1u2Mv6METn/frame_012s.png", "ground_truth_stage": "blowing_process", "detected_objects": [{"label":"worker","confidence":0.95},{"label":"safety_helmet","confidence":0.96},{"label":"blowing_machine","confidence":0.92},{"label":"fiber_cable","confidence":0.9}]},
+        {"timestamp": 15, "frame_path": "demo_air_blowing/frames/BV1u2Mv6METn/frame_015s.png", "ground_truth_stage": "cable_loading", "detected_objects": [{"label":"worker","confidence":0.91},{"label":"safety_helmet","confidence":0.93},{"label":"cable_reel","confidence":0.72},{"label":"fiber_cable","confidence":0.91}], "risk_detection": [{"risk":"exposed_cable_loop_trip_hazard","severity":"medium","confidence":0.81,"status":"manual_review_required"}]},
+        {"timestamp": 18, "frame_path": "demo_air_blowing/frames/BV1u2Mv6METn/frame_018s.png", "ground_truth_stage": "blowing_process", "detected_objects": [{"label":"blowing_machine","confidence":0.95},{"label":"fiber_cable","confidence":0.87}]},
+        {"timestamp": 21, "frame_path": "demo_air_blowing/frames/BV1u2Mv6METn/frame_021s.png", "ground_truth_stage": "completion_check", "detected_objects": [{"label":"worker","confidence":0.72},{"label":"blowing_machine","confidence":0.94},{"label":"fiber_cable","confidence":0.86}]}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "trained_at": "2026-09-08T14:30:07+08:00",
+  "base_model": "yolo26n.pt",
+  "weights": "backend/models/construction_yolo.pt",
+  "weight_selection": "last_epoch_for_demo_calibration",
+  "epochs": 40,
+  "image_size": 320,
+  "device": "cpu",
+  "dataset": {
+    "dataset": "E:\\桌面\\挑战杯\\VeriBuild_AirBlowing_Demo\\datasets\\construction_objects",
+    "sample_count": 16,
+    "train_count": 13,
+    "val_count": 3,
+    "box_count": 22,
+    "classes": [
+      "blowing_machine",
+      "cable_reel",
+      "fusion_splicer"
+    ]
+  },
+  "dataset_manifest_sha256": "1039d71f78514103a5609eb06cc244ed5da27f4b17c845da6afcdcdadfc1024e",
+  "metrics": {
+    "metrics/precision(B)": 0.5426369408586188,
+    "metrics/recall(B)": 0.3333333333333333,
+    "metrics/mAP50(B)": 0.7323611111111111,
+    "metrics/mAP50-95(B)": 0.5316989952718675,
+    "fitness": 0.5316989952718675
+  },
+  "scope": "竞赛演示小样本模型，部署前需扩充独立现场数据并重新验证"
+}

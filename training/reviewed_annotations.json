@@ -1,0 +1,61 @@
+{
+  "classes": ["blowing_machine", "cable_reel", "fusion_splicer"],
+  "coordinate_format": "xyxy_pixels",
+  "review_status": "人工复核",
+  "samples": [
+    {"video": "demo_air_blowing/input/BV1Ld4y1X7AA.mp4", "timestamp": 3.5, "stage": "cable_loading", "split": "train", "boxes": [
+      {"label": "blowing_machine", "xyxy": [160, 105, 322, 333]},
+      {"label": "cable_reel", "xyxy": [494, 91, 620, 230]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1Ld4y1X7AA.mp4", "timestamp": 4.5, "stage": "blowing_process", "split": "train", "boxes": [
+      {"label": "blowing_machine", "xyxy": [0, 25, 640, 348]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1Ld4y1X7AA.mp4", "timestamp": 5.0, "stage": "blowing_process", "split": "train", "boxes": [
+      {"label": "blowing_machine", "xyxy": [0, 24, 640, 350]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1Ld4y1X7AA.mp4", "timestamp": 8.0, "stage": "blowing_process", "split": "train", "boxes": [
+      {"label": "blowing_machine", "xyxy": [105, 68, 438, 328]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1Ld4y1X7AA.mp4", "timestamp": 10.0, "stage": "blowing_process", "split": "val", "boxes": [
+      {"label": "blowing_machine", "xyxy": [137, 53, 430, 322]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1u2Mv6METn.mp4", "timestamp": 0.0, "stage": "equipment_setup", "split": "train", "boxes": [
+      {"label": "blowing_machine", "xyxy": [91, 181, 252, 318]},
+      {"label": "cable_reel", "xyxy": [91, 224, 260, 346]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1u2Mv6METn.mp4", "timestamp": 6.0, "stage": "blowing_process", "split": "train", "boxes": [
+      {"label": "blowing_machine", "xyxy": [0, 169, 177, 318]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1u2Mv6METn.mp4", "timestamp": 9.0, "stage": "blowing_process", "split": "train", "boxes": [
+      {"label": "blowing_machine", "xyxy": [13, 215, 355, 516]},
+      {"label": "cable_reel", "xyxy": [24, 314, 351, 638]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1u2Mv6METn.mp4", "timestamp": 12.0, "stage": "blowing_process", "split": "train", "boxes": [
+      {"label": "blowing_machine", "xyxy": [215, 246, 360, 457]},
+      {"label": "cable_reel", "xyxy": [199, 354, 360, 639]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1u2Mv6METn.mp4", "timestamp": 18.0, "stage": "blowing_process", "split": "val", "boxes": [
+      {"label": "blowing_machine", "xyxy": [57, 219, 347, 488]},
+      {"label": "cable_reel", "xyxy": [23, 328, 358, 639]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1u2Mv6METn.mp4", "timestamp": 21.0, "stage": "completion_check", "split": "train", "boxes": [
+      {"label": "blowing_machine", "xyxy": [50, 190, 344, 466]},
+      {"label": "cable_reel", "xyxy": [25, 304, 356, 639]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1k5411P7qE.mp4", "timestamp": 89.2, "stage": "fusion_splicing", "split": "train", "boxes": [
+      {"label": "fusion_splicer", "xyxy": [88, 0, 571, 359]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1k5411P7qE.mp4", "timestamp": 110.2, "stage": "fusion_splicing", "split": "train", "boxes": [
+      {"label": "fusion_splicer", "xyxy": [188, 0, 467, 350]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1k5411P7qE.mp4", "timestamp": 129.5, "stage": "fiber_organizing", "split": "train", "boxes": [
+      {"label": "fusion_splicer", "xyxy": [140, 0, 526, 359]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1k5411P7qE.mp4", "timestamp": 150.5, "stage": "fiber_organizing", "split": "val", "boxes": [
+      {"label": "fusion_splicer", "xyxy": [168, 17, 472, 359]}
+    ]},
+    {"video": "demo_air_blowing/input/BV1k5411P7qE.mp4", "timestamp": 164.5, "stage": "fiber_organizing", "split": "train", "boxes": [
+      {"label": "fusion_splicer", "xyxy": [168, 0, 472, 359]}
+    ]}
+  ]
+}

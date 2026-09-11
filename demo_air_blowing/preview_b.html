@@ -1,0 +1,17 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Cross-scene video inspection</title>
+<style>
+  body{margin:0;background:#111;color:#eee;font:14px system-ui;padding:10px}video{display:block;width:960px;max-width:100%;background:#000}.controls{display:flex;gap:8px;margin-top:8px}button{padding:7px 12px}
+</style>
+<video id="video" src="input/BV1u2Mv6METn.mp4" controls preload="auto"></video>
+<div class="controls"></div>
+<script>
+const video=document.querySelector('#video');
+for(const second of [0,3,6,9,12,15,18,21]){
+  const button=document.createElement('button');
+  button.textContent=`${second}s`;
+  button.onclick=()=>{video.pause();video.currentTime=Math.min(second,video.duration||second)};
+  document.querySelector('.controls').append(button);
+}
+</script>

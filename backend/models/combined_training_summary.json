@@ -1,0 +1,40 @@
+{
+  "trained_at": "2026-09-09T18:09:18+08:00",
+  "weights": "backend/models/construction_yolo_combined.pt",
+  "dataset": {
+    "dataset": "D:\\GIS\\new\\VeriBuild_AirBlowing_Demo\\datasets\\video_construction_combined",
+    "classes": [
+      "blowing_machine",
+      "cable_reel",
+      "fusion_splicer",
+      "air_compressor",
+      "fiber_cable",
+      "splice_tray"
+    ],
+    "images": 45,
+    "splits": {
+      "train": 42,
+      "val": 3
+    },
+    "manual_expanded_images": 29,
+    "legacy_reviewed_images": 16
+  },
+  "classes": [
+    "blowing_machine",
+    "cable_reel",
+    "fusion_splicer",
+    "air_compressor",
+    "fiber_cable",
+    "splice_tray"
+  ],
+  "epochs": 35,
+  "batch": 4,
+  "imgsz": 320,
+  "device": "cpu",
+  "metrics": {
+    "precision": 0.011206816708344912,
+    "recall": 1.0,
+    "map50": 0.35761674118231496,
+    "map50_95": 0.27644596728408205
+  }
+}
