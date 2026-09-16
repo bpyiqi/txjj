@@ -18,7 +18,7 @@ from .database import BASE_DIR, DB_PATH, db, initialize_database
 from .engine import EVIDENCE_LABELS, candidate_matches, extract_code, infer_evidence_type, now_iso, recompute_object, sync_evidence_issues, synchronize_all
 from .exports import build_archive, build_excel, build_pdf
 from .ai_routes import router as ai_router
-from .management_routes import router as management_router
+from .management_routes import clear_video_records, router as management_router
 from .gis_importer import import_geojson
 from .video_sampling import ensure_video_decodable
 
@@ -37,6 +37,7 @@ MAX_EXTRACTED_FRAMES = 900
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     initialize_database()
+    clear_video_records()
     imported = import_geojson()
     if not imported["changed"] and imported["status"] == "not_available":
         synchronize_all()

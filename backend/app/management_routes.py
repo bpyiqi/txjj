@@ -34,6 +34,73 @@ EXTENSIONS = {
 }
 
 
+def clear_video_records(data_id: int | None = None, *, delete_files: bool = True) -> dict:
+    """Remove uploaded construction videos and only the analysis evidence derived from them."""
+    paths: list[str] = []
+    affected_tasks: set[str] = set()
+    removed_evidence = 0
+    with db() as conn:
+        if data_id is None:
+            rows = conn.execute(
+                "SELECT id,task_id,file_path FROM construction_data WHERE data_type='施工视频'"
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT id,task_id,file_path FROM construction_data WHERE id=? AND data_type='施工视频'",
+                (data_id,),
+            ).fetchall()
+        if not rows:
+            return {"deleted_video_records": 0, "deleted_analysis_evidence": 0}
+
+        ids = [row["id"] for row in rows]
+        affected_tasks = {row["task_id"] for row in rows}
+        paths.extend(row["file_path"] for row in rows if row["file_path"])
+        placeholders = ",".join("?" for _ in ids)
+        evidence_rows = conn.execute(
+            f"""SELECT DISTINCT e.evidence_id,e.asset_path
+                FROM ai_analysis_results ar JOIN evidence e ON e.evidence_id=ar.evidence_id
+                WHERE ar.data_id IN ({placeholders})""",
+            ids,
+        ).fetchall()
+        evidence_ids = [row["evidence_id"] for row in evidence_rows]
+        paths.extend(row["asset_path"] for row in evidence_rows if row["asset_path"])
+        removed_evidence = len(evidence_ids)
+        if evidence_ids:
+            evidence_placeholders = ",".join("?" for _ in evidence_ids)
+            conn.execute(f"DELETE FROM issues WHERE evidence_id IN ({evidence_placeholders})", evidence_ids)
+            conn.execute(f"DELETE FROM construction_task_evidence WHERE evidence_id IN ({evidence_placeholders})", evidence_ids)
+        conn.execute(f"DELETE FROM ai_analysis_results WHERE data_id IN ({placeholders})", ids)
+        if evidence_ids:
+            conn.execute(f"DELETE FROM evidence WHERE evidence_id IN ({evidence_placeholders})", evidence_ids)
+        conn.execute(f"DELETE FROM construction_data WHERE id IN ({placeholders})", ids)
+
+        for task_id in affected_tasks:
+            latest = conn.execute(
+                """SELECT file_path,file_sha256,status FROM construction_data
+                   WHERE task_id=? AND data_type='施工视频' ORDER BY id DESC LIMIT 1""",
+                (task_id,),
+            ).fetchone()
+            if latest:
+                task_status = "AI分析完成" if latest["status"] == "已分析" else latest["status"]
+                conn.execute(
+                    "UPDATE construction_tasks SET source_video_path=?,source_video_sha256=?,status=?,updated_at=? WHERE task_id=?",
+                    (latest["file_path"], latest["file_sha256"], task_status, now_iso(), task_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE construction_tasks SET source_video_path=NULL,source_video_sha256=NULL,status='待上传',updated_at=? WHERE task_id=?",
+                    (now_iso(), task_id),
+                )
+
+    if delete_files:
+        upload_root = (BASE_DIR / "uploads").resolve()
+        for stored_path in paths:
+            candidate = (BASE_DIR / stored_path).resolve()
+            if candidate != upload_root and upload_root in candidate.parents and candidate.is_file():
+                candidate.unlink(missing_ok=True)
+    return {"deleted_video_records": len(ids), "deleted_analysis_evidence": removed_evidence}
+
+
 def _project_id(project_id: str | None) -> str:
     if project_id:
         return project_id
@@ -277,6 +344,17 @@ def analyze_construction_data(data_id: int) -> dict:
     if current["status"] == "分析失败":
         raise HTTPException(400, current["error_message"] or "影像分析失败")
     return {"id": data_id, "task_id": row["task_id"], "status": current["status"], "evidence_count": evidence_count}
+
+
+@router.delete("/construction-data/{data_id}")
+def delete_construction_video(data_id: int) -> dict:
+    with db() as conn:
+        row = conn.execute("SELECT data_type FROM construction_data WHERE id=?", (data_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "视频记录不存在")
+    if row["data_type"] != "施工视频":
+        raise HTTPException(400, "当前删除接口仅处理施工视频")
+    return {"id": data_id, **clear_video_records(data_id)}
 
 
 @router.get("/analysis-tasks")

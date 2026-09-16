@@ -30,6 +30,14 @@ async function request(url, options = {}) {
 }
 function esc(value) { return String(value ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])) }
 function fmtDate(v) { return v ? String(v).replace('T',' ').slice(0,16) : '-' }
+function updateClock() {
+  const now = new Date()
+  const parts = new Intl.DateTimeFormat('zh-CN', {
+    year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+  }).formatToParts(now).reduce((result,item)=>(result[item.type]=item.value,result),{})
+  const clock = document.querySelector('#updated-at')
+  if (clock) clock.textContent = `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`
+}
 function statusClass(status) { return ['已验真','完成','生成','已分析','已采集','已入库','已生成'].includes(status) ? 'verified' : ['部分匹配','排队中','抽帧中','YOLO检测中','验真中'].includes(status) ? 'partial' : ['缺失影像','缺失','分析失败'].includes(status) ? 'missing' : 'neutral' }
 function statusBadge(status) { return `<span class="status ${statusClass(status)}">${esc(status)}</span>` }
 function severityBadge(v) { return `<span class="severity ${v === '高' ? 'high' : v === '中' ? 'medium' : 'low'}">${esc(v)}</span>` }
@@ -53,13 +61,11 @@ document.querySelector('#export-menu').onclick = e => e.stopPropagation()
 
 async function loadProject() {
   state.project = await request('/api/project')
-  document.querySelector('#sidebar-scenario').textContent = state.project.scenario
-  document.querySelector('#data-version').textContent = state.project.data_version
-  document.querySelector('#project-name').textContent = state.project.name
-  document.querySelector('#updated-at').textContent = fmtDate(state.project.updated_at)
+  updateClock()
 }
 
-document.querySelector('#audit-btn').onclick = () => {
+const auditButton = document.querySelector('#audit-btn')
+if (auditButton) auditButton.onclick = () => {
   const g = state.project?.data_governance || {}
   const sources = Array.isArray(g.sources) ? g.sources.join('；') : '-'
   const processing = Array.isArray(g.processing) ? g.processing.join('；') : '-'
@@ -80,6 +86,10 @@ async function renderRoute() {
   page.innerHTML = '<div class="empty">正在加载业务数据...</div>'
   try {
     if (state.route === 'dashboard') await renderDashboard()
+    else if (state.route === 'air') await renderSceneSupervision('air_blowing')
+    else if (state.route === 'splicing') await renderSceneSupervision('fusion_splicing')
+    else if (state.route === 'safety') await renderSafetySupervision()
+    else if (state.route === 'audit') await renderAuditPage()
     else if (state.route === 'collection') await renderCollection()
     else if (state.route === 'analysis') await renderAnalysis()
     else if (state.route === 'verification') await renderVerification()
@@ -96,41 +106,34 @@ async function renderRoute() {
 }
 
 async function renderDashboard() {
-  const [data, ai, stats, overview] = await Promise.all([request('/api/summary'), request('/api/ai/dashboard'), request('/api/management/dashboard'), request('/api/management/platform-overview')])
-  const k = data.kpis, s = stats.statistics
-  page.innerHTML = pageHeader('项目驾驶舱','', '<button class="btn primary" id="goto-collection">采集施工数据</button>') + `
-    <div class="grid kpi-grid">
-      ${kpiCard('施工任务',s.task_count,'','☷')}
-      ${kpiCard('施工影像',s.media_count,'已上传的视频与现场图片','▣')}
-      ${kpiCard('影像分析',s.analysis_count,s.processing_count?`${s.processing_count} 个任务处理中`:s.failed_count?`${s.failed_count} 个任务失败`:'已完成的视频任务','✓')}
-      ${kpiCard('数字交付',s.delivery_count,'','▤')}
-    </div>
-    <section class="lifecycle-panel">
-      ${[
-        ['工程设计数据导入',overview.layers.gis_feature_count],
-        ['施工现场数据采集',overview.layers.collected_count],
-        ['施工影像分析',overview.layers.analyzed_video_count],
-        ['施工状态识别',overview.layers.analyzed_video_count],
-        ['智能验真',overview.layers.evidence_count],
-        ['工程对象关联',overview.layers.object_count],
-        ['数字交付',overview.layers.delivery_count],
-      ].map((item,index,array)=>`<div><b>${index+1}</b><span>${item[0]}</span><strong>${item[1]}</strong></div>${index<array.length-1?'<i>→</i>':''}`).join('')}
-    </section>
-    <section class="panel" style="margin-top:16px">
-      <div class="panel-head"><h2>施工全过程</h2><a class="btn text" href="/api/ai/projects/${encodeURIComponent(ai.project.project_id)}/report.pdf">数字交付报告</a></div>
-      <div class="panel-body">
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
-          ${ai.workflow.map(step=>`<div class="recommend"><div class="recommend-icon">${step.sequence}</div><div><strong>${esc(step.name)}</strong>${statusBadge(step.status)}</div></div>`).join('')}
-        </div>
-      </div>
-    </section>
-    <div class="grid two-col" style="margin-top:16px">
-      ${panel('工程对象状态',`<div class="stats3"><div class="statbox"><span>已验真</span><strong>${k.verified}</strong></div><div class="statbox"><span>部分匹配</span><strong>${k.partial}</strong></div><div class="statbox"><span>缺失影像</span><strong>${k.missing}</strong></div></div>`, '<button class="btn text" id="goto-ledger">查看台账</button>')}
-      ${panel('问题状态',`<div class="stats3"><div class="statbox"><span>待处置</span><strong>${k.open_issues}</strong></div><div class="statbox"><span>高风险对象</span><strong>${k.high_risk_objects}</strong></div><div class="statbox"><span>档案完整率</span><strong>${k.archive_completeness.toFixed(1)}%</strong></div></div>`, '<button class="btn text" id="goto-issues">查看问题</button>')}
-    </div>`
-  document.querySelector('#goto-collection').onclick = () => navigate('collection')
-  document.querySelector('#goto-ledger').onclick = () => navigate('ledger')
-  document.querySelector('#goto-issues').onclick = () => navigate('issues')
+  const [data, stats, overview, gis, objects, tasks, rules] = await Promise.all([
+    request('/api/summary'), request('/api/management/dashboard'), request('/api/management/platform-overview'),
+    request('/api/gis'), request('/api/objects'), request('/api/management/verification-workbench'), request('/api/rules')
+  ])
+  const k=data.kpis,s=stats.statistics,l=overview.layers
+  const taskDone=tasks.filter(t=>t.status==='完成').length
+  const constructionProgress=tasks.length?taskDone/tasks.length*100:0
+  const verificationRate=k.object_total?(k.verified+k.partial)/k.object_total*100:0
+  const recentIssues=data.recent_activity||[]
+  const safetyRisk=data.issue_distribution.find(item=>item.name==='安全违规')?.value||0
+  const corridor=selectConstructionCorridor(gis,objects)
+  const focus=corridor.objects.find(o=>o.verification_status==='部分匹配')||corridor.objects[0]||objects[0]
+  const cards=[
+    ['施工进度',constructionProgress,'#f59e0b'],['验真通过率',verificationRate,'#1d6fd6'],
+    ['当前风险',k.open_issues,'#ef3340','项'],['数字档案完整率',k.archive_completeness,'#0b9b62']
+  ]
+  page.innerHTML=`<div class="command-dashboard">
+    <section class="command-kpis">${cards.map(([name,value,color,unit])=>`<article style="--accent:${color}"><span>${name}</span><strong>${Number(value).toFixed(unit?0:1)}${unit||'%'}</strong>${unit?'':`<div><i style="width:${Math.min(100,Number(value))}%"></i></div>`}</article>`).join('')}</section>
+    <section class="command-counts">${[['施工任务',s.task_count],['工程对象',k.object_total],['GIS要素',l.gis_feature_count],['影像证据',k.evidence_total],['业务规则',rules.length],['问题数量',k.open_issues],['数字交付',s.delivery_count]].map(([name,value])=>`<div><span>${name}</span><strong>${value}</strong></div>`).join('')}</section>
+    <div class="command-main">
+      <section class="command-map-card"><header><h2>项目施工态势</h2><div class="map-legend"><span class="green">已完成</span><span class="orange">施工中</span><span class="gray">待施工</span><span class="red">异常点</span></div></header><div class="command-map" id="dashboard-map">${buildSatelliteMap(corridor.gis,corridor.objects,focus?.object_id)}${focus?`<aside><b>当前工程对象</b><strong>${esc(focus.object_id)}</strong><span>证据：${focus.evidence_count} 条</span><span>问题：${focus.issue_count} 项</span><span>完整率：${Math.round(focus.completeness*100)}%</span><em>${esc(focus.verification_status)}</em></aside>`:''}</div></section>
+      <aside class="command-side">
+        <section><h2>今日智能监管</h2>${[['GIS工程对象',l.object_count],['影像分析结果',l.analyzed_video_count],['安全风险',safetyRisk],['待整改问题',k.open_issues]].map(([n,v],i)=>`<div class="alert-row level-${i}"><b>${n}</b><strong>${v}</strong></div>`).join('')}</section>
+        <section><h2>最近处置事件</h2>${recentIssues.length?recentIssues.map(i=>`<div class="activity-row"><i class="${i.severity==='高'?'red':'orange'}"></i><span><b>${esc(i.title||i.description)}</b><small>${fmtDate(i.created_at||i.updated_at)}</small></span></div>`).join(''):'<div class="empty compact">暂无处置事件</div>'}</section>
+      </aside>
+    </div></div>`
+  document.querySelectorAll('#dashboard-map [data-object]').forEach(node=>node.onclick=()=>openMapObject(node.dataset.object))
+  bindSatelliteControls(document.querySelector('#dashboard-map'))
   if(s.processing_count)state.management.refreshTimer=setTimeout(()=>{if(state.route==='dashboard')renderDashboard()},2000)
 }
 function kpiCard(label,value,hint,icon){return `<div class="kpi"><div class="kpi-head"><span>${label}</span><div class="kpi-icon">${icon}</div></div><div class="kpi-value">${value}</div><div class="kpi-hint">${hint}</div></div>`}
@@ -150,10 +153,12 @@ async function renderCollection(){
   const projects=await request('/api/management/projects');if(!projects.length){page.innerHTML=pageHeader('施工数据采集中心','')+'<div class="empty">暂无施工项目</div>';return}
   state.management.projectId=state.management.projectId||projects[0].project_id
   const [tasks,data]=await Promise.all([request(`/api/management/tasks?project_id=${encodeURIComponent(state.management.projectId)}`),request(`/api/management/construction-data?project_id=${encodeURIComponent(state.management.projectId)}`)])
-  page.innerHTML=pageHeader('施工数据采集中心','')+`<div class="collection-types"><div><b>▣</b><strong>施工视频</strong></div><div><b>▧</b><strong>现场图片</strong></div><div><b>▤</b><strong>工程资料</strong></div><div><b>⌖</b><strong>空间数据</strong></div></div><div class="grid two-col">${panel('上传施工数据',`<div class="field"><label>项目</label><select class="select" id="collect-project">${projects.map(p=>`<option value="${p.project_id}" ${p.project_id===state.management.projectId?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>施工任务</label><select class="select" id="collect-task">${tasks.map(t=>`<option value="${t.task_id}">${esc(t.name)}</option>`).join('')}</select></div><label class="dropzone" for="collect-file" style="margin-top:14px"><strong id="collect-file-name">选择施工数据</strong><span>视频、图片、资料、空间数据或工程清单</span></label><input id="collect-file" type="file" accept=".mp4,.jpg,.jpeg,.png,.webp,.pdf,.xls,.xlsx,.csv,.geojson,.zip,.shp,.dbf,.shx,.prj" class="hidden"><button class="btn primary" id="collect-submit" style="margin-top:14px">上传并提交处理</button>`)}${panel('统一处理流程','<div class="rule-list"><div class="rule-item"><i class="ok"></i><strong>数据入库</strong><span>项目与施工任务绑定</span></div><div class="rule-item"><i class="ok"></i><strong>分类处理</strong><span>影像分析、文本识别、空间解析</span></div><div class="rule-item"><i class="ok"></i><strong>工程关联</strong><span>证据、规则与工程对象关联</span></div></div>')}</div><div class="table-panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>文件</th><th>施工任务</th><th>数据类型</th><th>上传时间</th><th>处理状态</th><th>进度/操作</th></tr></thead><tbody>${data.length?data.map(d=>`<tr><td>${esc(d.file_name)}</td><td>${esc(d.task_name)}</td><td>${esc(d.data_type)}</td><td>${fmtDate(d.upload_time)}</td><td>${statusBadge(d.status)}<small class="job-stage-message">${esc(d.error_message||d.stage_message||'')}</small></td><td>${d.data_type==='施工视频'?`${progress(d.progress||0,90)}${d.status==='分析失败'?`<button class="btn" data-analyze="${d.id}">重新处理</button>`:''}`:'-'}</td></tr>`).join(''):'<tr><td colspan="6"><div class="empty">暂无采集数据</div></td></tr>'}</tbody></table></div></div>`
+  page.innerHTML=pageHeader('施工数据采集中心','')+`<div class="collection-types"><div><b>▣</b><strong>施工视频</strong></div><div><b>▧</b><strong>现场图片</strong></div><div><b>▤</b><strong>工程资料</strong></div><div><b>⌖</b><strong>空间数据</strong></div></div><div class="grid two-col">${panel('上传施工数据',`<div class="field"><label>项目</label><select class="select" id="collect-project">${projects.map(p=>`<option value="${p.project_id}" ${p.project_id===state.management.projectId?'selected':''}>${esc(p.name)}</option>`).join('')}</select></div><div class="field"><label>施工任务</label><select class="select" id="collect-task">${tasks.map(t=>`<option value="${t.task_id}">${esc(t.name)}</option>`).join('')}</select></div><label class="dropzone" for="collect-file" style="margin-top:14px"><strong id="collect-file-name">选择施工数据</strong><span>可连续选择视频、图片、资料、空间数据或工程清单</span></label><input id="collect-file" type="file" multiple accept=".mp4,.jpg,.jpeg,.png,.webp,.pdf,.xls,.xlsx,.csv,.geojson,.zip,.shp,.dbf,.shx,.prj" class="hidden"><button class="btn primary" id="collect-submit" style="margin-top:14px">上传并提交处理</button>`)}${panel('统一处理流程','<div class="rule-list"><div class="rule-item"><i class="ok"></i><strong>数据入库</strong><span>项目与施工任务绑定</span></div><div class="rule-item"><i class="ok"></i><strong>分类处理</strong><span>影像分析、文本识别、空间解析</span></div><div class="rule-item"><i class="ok"></i><strong>工程关联</strong><span>证据、规则与工程对象关联</span></div></div>')}</div><div class="table-panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>文件</th><th>施工任务</th><th>数据类型</th><th>上传时间</th><th>处理状态</th><th>进度/操作</th></tr></thead><tbody>${data.length?data.map(d=>`<tr><td>${esc(d.file_name)}</td><td>${esc(d.task_name)}</td><td>${esc(d.data_type)}</td><td>${fmtDate(d.upload_time)}</td><td>${statusBadge(d.status)}<small class="job-stage-message">${esc(d.error_message||d.stage_message||'')}</small></td><td>${d.data_type==='施工视频'?`${progress(d.progress||0,90)}<button class="btn text" data-view-analysis="${d.id}">查看分析</button>${d.status==='分析失败'?`<button class="btn" data-analyze="${d.id}">重新处理</button>`:''}${['排队中','抽帧中','YOLO检测中','验真中'].includes(d.status)?'':`<button class="btn text delete-video" data-delete-video="${d.id}">删除</button>`}`:'-'}</td></tr>`).join(''):'<tr><td colspan="6"><div class="empty">暂无采集数据</div></td></tr>'}</tbody></table></div></div>`
   document.querySelector('#collect-project').onchange=e=>{state.management.projectId=e.target.value;renderCollection()}
-  const input=document.querySelector('#collect-file');input.onchange=()=>{const file=input.files[0];document.querySelector('#collect-file-name').textContent=file?`${file.name}（${file.size<1024?file.size+' 字节':(file.size/1024/1024).toFixed(1)+' MB'}）`:'选择施工数据'}
-  document.querySelector('#collect-submit').onclick=async()=>{if(!input.files[0])return toast('请选择文件');const task=document.querySelector('#collect-task').value;if(!task)return toast('请选择施工任务');const fd=new FormData();fd.append('project_id',state.management.projectId);fd.append('task_id',task);fd.append('file',input.files[0]);const button=document.querySelector('#collect-submit');button.disabled=true;button.textContent='正在上传并校验';try{const uploaded=await request('/api/management/construction-data',{method:'POST',body:fd});toast(uploaded.data_type==='施工视频'?'视频已提交，后台开始分析':'施工数据已采集');if(uploaded.analysis_job_id){state.management.analysisJobId=String(uploaded.analysis_job_id);navigate('analysis')}else renderCollection()}catch(err){button.disabled=false;button.textContent='上传并提交处理';toast(err.message)}}
+  const input=document.querySelector('#collect-file');input.onchange=()=>{const files=[...input.files];document.querySelector('#collect-file-name').textContent=files.length===1?`${files[0].name}（${files[0].size<1024?files[0].size+' 字节':(files[0].size/1024/1024).toFixed(1)+' MB'}）`:files.length?`已选择 ${files.length} 个文件`:'选择施工数据'}
+  document.querySelector('#collect-submit').onclick=async()=>{const files=[...input.files];if(!files.length)return toast('请选择文件');const task=document.querySelector('#collect-task').value;if(!task)return toast('请选择施工任务');const button=document.querySelector('#collect-submit');button.disabled=true;let completed=0;try{for(const file of files){button.textContent=`正在上传 ${completed+1}/${files.length}`;const fd=new FormData();fd.append('project_id',state.management.projectId);fd.append('task_id',task);fd.append('file',file);const uploaded=await request('/api/management/construction-data',{method:'POST',body:fd});if(uploaded.analysis_job_id)state.management.analysisJobId=String(uploaded.analysis_job_id);completed++}input.value='';toast(`已提交 ${completed} 个文件，可继续上传`);await renderCollection()}catch(err){button.disabled=false;button.textContent='继续上传';toast(`${completed} 个文件已提交；${err.message}`)}}
+  document.querySelectorAll('[data-view-analysis]').forEach(b=>b.onclick=()=>{state.management.analysisJobId=b.dataset.viewAnalysis;navigate('analysis')})
+  document.querySelectorAll('[data-delete-video]').forEach(b=>b.onclick=async()=>{if(!confirm('删除该视频及其生成的分析证据？'))return;b.disabled=true;try{await request(`/api/management/construction-data/${b.dataset.deleteVideo}`,{method:'DELETE'});toast('视频记录已删除');await renderCollection()}catch(err){b.disabled=false;toast(err.message)}})
   document.querySelectorAll('[data-analyze]').forEach(b=>b.onclick=async()=>{b.disabled=true;b.textContent='正在重新处理';try{await request(`/api/management/construction-data/${b.dataset.analyze}/analyze`,{method:'POST'});state.management.analysisJobId=b.dataset.analyze;navigate('analysis')}catch(err){b.disabled=false;b.textContent='重新处理';toast(`影像解析失败：${err.message}`)}})
   if(data.some(d=>['排队中','抽帧中','YOLO检测中','验真中'].includes(d.status)))state.management.refreshTimer=setTimeout(()=>{if(state.route==='collection')renderCollection()},1500)
 }
@@ -285,6 +290,52 @@ function buildSvgMap(gis, objects, selected) {
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g class="map-grid">${grid}</g>${infra}${cables}${ptech}${obj}</svg>`
 }
 function flattenCoords(coords){ if(!Array.isArray(coords))return[]; if(typeof coords[0]?.[0]==='number')return coords; return coords.flatMap(flattenCoords) }
+
+function selectConstructionCorridor(gis,objects){
+  const lines=(gis.features||[]).filter(feature=>feature.layer==='CABLE'&&feature.geometry_type==='LineString')
+  const length=feature=>{const points=flattenCoords(feature.coordinates);return points.slice(1).reduce((total,point,index)=>total+Math.hypot(Number(point[0])-Number(points[index][0]),Number(point[1])-Number(points[index][1])),0)}
+  const route=lines.sort((a,b)=>length(b)-length(a))[0]
+  if(!route)return{gis,objects}
+  const routePoints=flattenCoords(route.coordinates).map(point=>[Number(point[0]),Number(point[1])])
+  const routeId=route.properties?.code||route.feature_id
+  const routeObject=objects.find(item=>item.object_id===routeId)
+  const nearest=objects.map(item=>({item,distance:Math.min(...routePoints.map(point=>Math.hypot(Number(item.longitude)-point[0],Number(item.latitude)-point[1])))})).sort((a,b)=>a.distance-b.distance).slice(0,14).map(row=>row.item)
+  if(routeObject&&!nearest.some(item=>item.object_id===routeObject.object_id))nearest.push(routeObject)
+  return{gis:{...gis,features:[route]},objects:nearest}
+}
+
+function buildSatelliteMap(gis,objects,selected){
+  const geoPoints=[]
+  ;(gis.features||[]).forEach(feature=>flattenCoords(feature.coordinates).forEach(point=>geoPoints.push([Number(point[0]),Number(point[1])])))
+  objects.forEach(item=>geoPoints.push([Number(item.longitude),Number(item.latitude)]))
+  const valid=geoPoints.filter(point=>Number.isFinite(point[0])&&Number.isFinite(point[1]))
+  if(!valid.length)return '<div class="empty">暂无可定位的GIS坐标</div>'
+  const W=1000,H=690,tileSize=256
+  const mercator=(point,zoom)=>{const scale=tileSize*(2**zoom);const lat=Math.max(-85.0511,Math.min(85.0511,point[1]))*Math.PI/180;return [(point[0]+180)/360*scale,(1-Math.log(Math.tan(lat)+1/Math.cos(lat))/Math.PI)/2*scale]}
+  let zoom=18,bounds
+  for(;zoom>=2;zoom--){const projected=valid.map(point=>mercator(point,zoom));const xs=projected.map(p=>p[0]),ys=projected.map(p=>p[1]);bounds={minX:Math.min(...xs),maxX:Math.max(...xs),minY:Math.min(...ys),maxY:Math.max(...ys)};if(bounds.maxX-bounds.minX<=W*.82&&bounds.maxY-bounds.minY<=H*.78)break}
+  const dataWidth=Math.max(80,bounds.maxX-bounds.minX),dataHeight=Math.max(80,bounds.maxY-bounds.minY)
+  const viewWidth=Math.max(dataWidth/.82,dataHeight/H*W/.78),viewHeight=viewWidth*H/W
+  const centerX=(bounds.minX+bounds.maxX)/2,centerY=(bounds.minY+bounds.maxY)/2
+  const left=centerX-viewWidth/2,top=centerY-viewHeight/2,right=left+viewWidth,bottom=top+viewHeight
+  const project=point=>{const p=mercator([Number(point[0]),Number(point[1])],zoom);return[(p[0]-left)/viewWidth*W,(p[1]-top)/viewHeight*H]}
+  let tiles=''
+  for(let x=Math.floor(left/tileSize);x<=Math.floor(right/tileSize);x++)for(let y=Math.floor(top/tileSize);y<=Math.floor(bottom/tileSize);y++)tiles+=`<img loading="eager" alt="" src="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${x}" style="left:${(x*tileSize-left)/viewWidth*100}%;top:${(y*tileSize-top)/viewHeight*100}%;width:${tileSize/viewWidth*100}%;height:${tileSize/viewHeight*100}%">`
+  const linePath=coordinates=>{const parts=Array.isArray(coordinates?.[0]?.[0])?coordinates:[coordinates];return parts.map(part=>part.map((point,index)=>{const [x,y]=project(point);return`${index?'L':'M'}${x.toFixed(1)},${y.toFixed(1)}`}).join(' ')).join(' ')}
+  const route=(gis.features||[]).filter(feature=>feature.geometry_type==='LineString').map(feature=>{
+    if(feature.layer!=='CABLE')return `<path class="satellite-route infra" d="${linePath(feature.coordinates)}"/>`
+    const line=flattenCoords(feature.coordinates)
+    return line.slice(1).map((point,index)=>{const previous=line[index];const midpoint=[(Number(previous[0])+Number(point[0]))/2,(Number(previous[1])+Number(point[1]))/2];const nearest=objects.reduce((best,item)=>{const distance=Math.hypot(Number(item.longitude)-midpoint[0],Number(item.latitude)-midpoint[1]);return!best||distance<best.distance?{item,distance}:best},null)?.item;const status=nearest?.verification_status||nearest?.status||'待施工';const statusClass=status==='已验真'?'verified':status==='部分匹配'?'partial':status==='缺失影像'?'missing':'pending';return `<path class="satellite-route cable ${statusClass}" d="${linePath([previous,point])}"/>`}).join('')
+  }).join('')
+  const points=objects.map(item=>{const [x,y]=project([item.longitude,item.latitude]);const status=item.verification_status||item.status;const color=status==='已验真'?'#16be6f':status==='部分匹配'?'#ffb000':'#ed2d3d';return `<g data-object="${esc(item.object_id)}"><title>${esc(item.object_id)} · ${esc(status)}</title><circle class="satellite-point ${item.object_id===selected?'selected':''}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${item.object_id===selected?8:5}" fill="${color}"/>${item.object_id===selected?`<text x="${(x+11).toFixed(1)}" y="${(y-10).toFixed(1)}">${esc(item.object_id)}</text>`:''}</g>`}).join('')
+  return `<div class="satellite-tiles">${tiles}</div><svg class="satellite-overlay" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${route}${points}</svg><div class="map-zoom"><button type="button" data-map-zoom="1">＋</button><button type="button" data-map-zoom="-1">−</button></div><div class="map-attribution">卫星影像：Esri</div>`
+}
+
+function bindSatelliteControls(host){
+  if(!host)return
+  let level=1
+  host.querySelectorAll('[data-map-zoom]').forEach(button=>button.onclick=event=>{event.stopPropagation();level=Math.max(1,Math.min(2.2,level+Number(button.dataset.mapZoom)*.2));host.style.setProperty('--map-scale',level.toFixed(1))})
+}
 async function openMapObject(id) {
   const d=await request(`/api/objects/${encodeURIComponent(id)}`)
   const html=`<div class="identity"><div><small>工程编码</small><h3>${esc(d.object.object_id)}</h3></div>${statusBadge(d.result.status)}</div><div class="stats3"><div class="statbox"><span>完整率</span><strong>${Math.round(d.result.completeness*100)}%</strong></div><div class="statbox"><span>证据</span><strong>${d.evidence.length}</strong></div><div class="statbox"><span>问题</span><strong>${d.issues.filter(i=>i.status!=='已关闭').length}</strong></div></div>${progress(d.result.completeness,430)}<table class="descriptions"><tr><th>对象类型</th><td>${esc(d.object.object_type)} / ${esc(d.object.structure_type)}</td></tr><tr><th>所属区域</th><td>${esc(d.object.site_id)}</td></tr><tr><th>关联设施</th><td>${esc(d.object.ptc_code)}</td></tr><tr><th>敷设方式</th><td>${esc(d.object.mode_pose)}</td></tr><tr><th>上游光缆</th><td>${esc(d.object.upstream_cable)}</td></tr></table><div class="section-title">强制验真节点</div><div class="rule-list">${d.timeline.map(t=>`<div class="rule-item"><i class="${t.status==='完成'?'ok':'bad'}"></i><strong>${esc(t.stage)}</strong>${statusBadge(t.status)}</div>`).join('')}</div><div class="section-title">关联证据</div>${d.evidence.length?`<div class="thumb-grid">${d.evidence.slice(0,6).map(e=>`<div class="thumb-card">${e.url?`<img src="${e.url}">`:'<div class="thumb">▣</div>'}<span>${esc(e.evidence_label)}</span></div>`).join('')}</div>`:'<div class="empty">暂无关联证据</div>'}<div style="margin-top:18px"><button class="btn primary" id="drawer-ledger">打开完整对象档案</button></div>`
@@ -392,7 +443,7 @@ drawLedgerPage = function(){
   document.querySelectorAll('[data-ledger]').forEach(b=>b.onclick=()=>openObjectLedger(b.dataset.ledger))
   document.querySelectorAll('#ledger-map-stage [data-object]').forEach(g=>g.onclick=()=>openObjectLedger(g.dataset.object))
 }
-function drawIssuesPage(){const s=state.issues;const types=['安全违规','影像缺失','工序缺失','资料缺失','编码未匹配','对象未关联','完整率不足','缺少测试/报告','节点顺序异常'];const counts=Object.fromEntries(types.map(t=>[t,s.items.filter(i=>i.issue_type===t&&i.status!=='已关闭').length]));const filtered=s.items.filter(i=>(!s.search||[i.issue_id,i.title,i.description,i.object_id].some(v=>String(v||'').toLowerCase().includes(s.search.toLowerCase())))&&(!s.type||i.issue_type===s.type)&&(!s.severity||i.severity===s.severity)&&(!s.status||i.status===s.status));const size=12,pages=Math.max(1,Math.ceil(filtered.length/size));s.page=Math.min(s.page,pages);const rows=filtered.slice((s.page-1)*size,s.page*size);page.innerHTML=pageHeader('问题处置中心','','<button class="btn" id="issue-refresh">刷新</button>')+`<div class="issue-closure-flow">${['发现问题','补充证据','重新分析','关闭问题'].map((step,index,array)=>`<strong>${step}</strong>${index<array.length-1?'<i>→</i>':''}`).join('')}</div><div class="issue-type-grid">${types.map(t=>`<button data-issue-type="${t}" class="${s.type===t?'active':''}"><span>${t}</span><strong>${counts[t]}</strong></button>`).join('')}</div><div class="toolbar" style="margin-top:12px"><input class="input" id="issue-search" placeholder="搜索问题编号、对象或描述" value="${esc(s.search)}"><select class="select" id="issue-severity"><option value="">全部等级</option>${['高','中','低'].map(v=>`<option ${s.severity===v?'selected':''}>${v}</option>`).join('')}</select><select class="select" id="issue-status"><option value="">全部状态</option>${['新发现','待确认','待整改','已补证','已关闭'].map(v=>`<option ${s.status===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="table-panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>问题编号</th><th>等级</th><th>问题类型</th><th>工程对象</th><th>问题内容</th><th>触发来源</th><th>责任人</th><th>状态</th><th>更新时间</th></tr></thead><tbody>${rows.map(i=>`<tr><td><button class="btn text" data-issue="${i.issue_id}">${i.issue_id}</button></td><td>${severityBadge(i.severity)}</td><td>${esc(i.issue_type)}</td><td>${esc(i.object_id||'未关联')}</td><td><strong>${esc(i.title)}</strong></td><td>${esc(i.source)}</td><td>${esc(i.assignee||'未分派')}</td><td><span class="status neutral">${esc(i.status)}</span></td><td>${fmtDate(i.updated_at)}</td></tr>`).join('')}</tbody></table></div>${pagination(filtered.length,s.page,pages,'issue-page')}</div>`;document.querySelector('#issue-refresh').onclick=renderIssues;document.querySelector('#issue-search').oninput=e=>{s.search=e.target.value;s.page=1;drawIssuesPage()};document.querySelector('#issue-severity').onchange=e=>{s.severity=e.target.value;s.page=1;drawIssuesPage()};document.querySelector('#issue-status').onchange=e=>{s.status=e.target.value;s.page=1;drawIssuesPage()};document.querySelectorAll('[data-issue-type]').forEach(b=>b.onclick=()=>{s.type=s.type===b.dataset.issueType?'':b.dataset.issueType;s.page=1;drawIssuesPage()});document.querySelectorAll('[data-issue]').forEach(b=>b.onclick=()=>openIssue(b.dataset.issue));document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{s.page=Number(b.dataset.page);drawIssuesPage()})}
+function drawIssuesPage(){const s=state.issues;const types=['安全违规','影像缺失','工序缺失','资料缺失','编码未匹配','对象未关联','完整率不足','缺少测试/报告','节点顺序异常'];const counts=Object.fromEntries(types.map(t=>[t,s.items.filter(i=>i.issue_type===t&&i.status!=='已关闭').length]));const filtered=s.items.filter(i=>(!s.search||[i.issue_id,i.title,i.description,i.object_id].some(v=>String(v||'').toLowerCase().includes(s.search.toLowerCase())))&&(!s.type||i.issue_type===s.type)&&(!s.severity||i.severity===s.severity)&&(!s.status||i.status===s.status));const size=12,pages=Math.max(1,Math.ceil(filtered.length/size));s.page=Math.min(s.page,pages);const rows=filtered.slice((s.page-1)*size,s.page*size);page.innerHTML=pageHeader('问题整改闭合','','<button class="btn" id="issue-refresh">刷新</button>')+`<div class="issue-closure-flow">${['问题发现','补充证据','重新验真','问题关闭'].map((step,index,array)=>`<strong>${step}</strong>${index<array.length-1?'<i>→</i>':''}`).join('')}</div><div class="issue-type-grid">${types.map(t=>`<button data-issue-type="${t}" class="${s.type===t?'active':''}"><span>${t}</span><strong>${counts[t]}</strong></button>`).join('')}</div><div class="toolbar" style="margin-top:12px"><input class="input" id="issue-search" placeholder="搜索问题编号、对象或描述" value="${esc(s.search)}"><select class="select" id="issue-severity"><option value="">全部等级</option>${['高','中','低'].map(v=>`<option ${s.severity===v?'selected':''}>${v}</option>`).join('')}</select><select class="select" id="issue-status"><option value="">全部状态</option>${['新发现','待确认','待整改','已补证','已关闭'].map(v=>`<option ${s.status===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="table-panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>问题编号</th><th>等级</th><th>问题类型</th><th>工程对象</th><th>问题内容</th><th>触发来源</th><th>责任人</th><th>状态</th><th>更新时间</th></tr></thead><tbody>${rows.map(i=>`<tr><td><button class="btn text" data-issue="${i.issue_id}">${i.issue_id}</button></td><td>${severityBadge(i.severity)}</td><td>${esc(i.issue_type)}</td><td>${esc(i.object_id||'未关联')}</td><td><strong>${esc(i.title)}</strong></td><td>${esc(i.source)}</td><td>${esc(i.assignee||'未分派')}</td><td><span class="status neutral">${esc(i.status)}</span></td><td>${fmtDate(i.updated_at)}</td></tr>`).join('')}</tbody></table></div>${pagination(filtered.length,s.page,pages,'issue-page')}</div>`;document.querySelector('#issue-refresh').onclick=renderIssues;document.querySelector('#issue-search').oninput=e=>{s.search=e.target.value;s.page=1;drawIssuesPage()};document.querySelector('#issue-severity').onchange=e=>{s.severity=e.target.value;s.page=1;drawIssuesPage()};document.querySelector('#issue-status').onchange=e=>{s.status=e.target.value;s.page=1;drawIssuesPage()};document.querySelectorAll('[data-issue-type]').forEach(b=>b.onclick=()=>{s.type=s.type===b.dataset.issueType?'':b.dataset.issueType;s.page=1;drawIssuesPage()});document.querySelectorAll('[data-issue]').forEach(b=>b.onclick=()=>openIssue(b.dataset.issue));document.querySelectorAll('[data-page]').forEach(b=>b.onclick=()=>{s.page=Number(b.dataset.page);drawIssuesPage()})}
 function openIssue(id){const i=state.issues.items.find(x=>x.issue_id===id);if(!i)return;openDrawer('问题详情',`<div class="identity"><div><small>${esc(i.issue_type)}</small><h3>${esc(i.title)}</h3></div>${severityBadge(i.severity)}</div><p class="note" style="font-size:12px;line-height:1.7;margin:14px 0">${esc(i.description)}</p><table class="descriptions"><tr><th>问题编号</th><td>${esc(i.issue_id)}</td></tr><tr><th>工程对象</th><td>${esc(i.object_id||'未关联')}</td></tr><tr><th>关联证据</th><td>${esc(i.evidence_id||'无')}</td></tr><tr><th>触发规则</th><td>${esc(i.rule_id||'系统检查')}</td></tr><tr><th>发现来源</th><td>${esc(i.source)}</td></tr><tr><th>当前状态</th><td>${esc(i.status)}</td></tr><tr><th>责任人</th><td>${esc(i.assignee||'未分派')}</td></tr><tr><th>整改期限</th><td>${esc(i.due_date||'未设置')}</td></tr></table>${i.resolution_note?`<div class="ocr-box"><strong>处置记录</strong><p>${esc(i.resolution_note)}</p></div>`:''}<div style="margin-top:18px"><button class="btn primary" id="update-issue">更新处置</button></div>`,520);document.querySelector('#update-issue').onclick=()=>openIssueUpdate(i)}
 function openIssueUpdate(i){openModal('更新问题处置',`<div class="field"><label>处置状态</label><select class="select" id="upd-status">${['新发现','待确认','待整改','已补证','已关闭'].map(v=>`<option ${i.status===v?'selected':''}>${v}</option>`).join('')}</select></div><div class="form-grid"><div class="field"><label>责任人</label><input class="input" id="upd-assignee" value="${esc(i.assignee||'')}" placeholder="施工队A / 张工"></div><div class="field"><label>整改期限</label><input class="input" id="upd-due" value="${esc(i.due_date||'')}" placeholder="YYYY-MM-DD"></div></div><div class="field"><label>处置记录</label><textarea id="upd-note" placeholder="说明整改措施、补充证据或关闭依据">${esc(i.resolution_note||'')}</textarea></div>`,`<button class="btn" id="upd-cancel">取消</button><button class="btn primary" id="upd-save">保存</button>`);document.querySelector('#upd-cancel').onclick=closeModal;document.querySelector('#upd-save').onclick=async()=>{try{await request(`/api/issues/${encodeURIComponent(i.issue_id)}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:document.querySelector('#upd-status').value,assignee:document.querySelector('#upd-assignee').value||null,due_date:document.querySelector('#upd-due').value||null,resolution_note:document.querySelector('#upd-note').value||null})});closeModal();closeDrawer();toast('问题处置状态已更新');state.issues.items=await request('/api/issues');drawIssuesPage()}catch(err){toast(err.message)}}}
 
@@ -400,15 +451,13 @@ const openManagedIssue=function(id){const i=state.issues.items.find(x=>x.issue_i
 openIssue=openManagedIssue
 
 async function renderDelivery(){
-  const overview=await request('/api/management/platform-overview')
+  const [overview,summary]=await Promise.all([request('/api/management/platform-overview'),request('/api/summary')])
   const layers=overview.layers
-  page.innerHTML=pageHeader('数字交付中心','',`<button class="btn primary" id="build-delivery">生成可信交付档案</button>`)+`
-    <section class="delivery-chain">
-      ${[['项目',1],['工程对象',layers.object_count],['施工过程',layers.collected_count],['分析结果',layers.analyzed_video_count],['影像证据',layers.evidence_count],['验真交付',layers.delivery_count]].map(([name,count],index,array)=>`<div><span>${esc(name)}</span><strong>${count}</strong></div>${index<array.length-1?'<i>→</i>':''}`).join('')}
-    </section>
-    <div class="grid two-col delivery-downloads">
-      ${panel('可信交付报告',`<div class="delivery-actions"><a class="btn" href="/api/exports/excel">验真数据表</a><a class="btn" href="/api/exports/pdf">验真报告</a><a class="btn primary" href="/api/exports/archive">数字资产包</a></div>`)}
-      ${panel('交付记录',overview.reports.length?overview.reports.map(report=>`<div class="delivery-report"><div><strong>${esc(report.title)}</strong><span>${fmtDate(report.generated_at)}</span></div>${statusBadge(report.status)}</div>`).join(''):'<div class="empty">尚未生成项目交付记录</div>')}
+  const completeness=Number(summary.kpis.archive_completeness||0)
+  page.innerHTML=pageHeader('可信数字交付','',`<button class="btn primary" id="build-delivery">生成可信交付档案</button>`)+`
+    <div class="delivery-reference-layout">
+      <section class="compact-card"><h2>实时内容</h2><div class="delivery-content-list">${[['工程对象',layers.object_count],['影像证据',layers.evidence_count],['分析结果',layers.analyzed_video_count],['问题记录',layers.open_issue_count],['交付记录',layers.delivery_count]].map(([name,count])=>`<div><i>✓</i><span>${name}</span><strong>${count}</strong></div>`).join('')}</div><footer><span>档案完整率</span><strong>${completeness.toFixed(1)}%</strong><div><i style="width:${Math.min(100,completeness)}%"></i></div></footer></section>
+      <section class="compact-card"><h2>完整性校验</h2><div class="delivery-file-list"><div><span>验真报告</span><b>${overview.reports.length?'✓':'待生成'}</b></div><div><span>证据档案</span><b>${layers.evidence_count?'✓':'待生成'}</b></div><div><span>清单文件</span><b>${layers.delivery_count?'✓':'待生成'}</b></div></div><dl><dt>完整性校验</dt><dd>${layers.delivery_count?'通过':'待生成'}</dd><dt>数据状态</dt><dd>${layers.delivery_count?'可交付':'待生成'}</dd></dl><div class="delivery-actions"><a class="btn" href="/api/exports/pdf">下载验真报告</a><a class="btn" href="/api/exports/archive">下载交付档案</a><a class="btn primary" href="/api/exports/excel">导出验真数据</a></div></section>
     </div>`
   document.querySelector('#build-delivery').onclick=async()=>{
     const button=document.querySelector('#build-delivery');button.disabled=true;button.textContent='正在生成交付档案'
@@ -417,5 +466,85 @@ async function renderDelivery(){
   }
 }
 
-async function init(){try{await loadProject();const route=location.hash.replace('#','')||'dashboard';navigate(['dashboard','collection','analysis','verification','evidence','ledger','issues','delivery'].includes(route)?route:'dashboard')}catch(error){page.innerHTML=`<div class="panel"><div class="panel-body"><h2>系统初始化失败</h2><p>${esc(error.message)}</p></div></div>`}}
+drawMapPage=function(){
+  const {gis,objects}=state.map
+  const corridor=selectConstructionCorridor(gis,objects)
+  const mapObjects=corridor.objects
+  const selectedId=mapObjects.some(o=>o.object_id===state.map.selected)?state.map.selected:(mapObjects.find(o=>o.verification_status==='部分匹配')?.object_id||mapObjects[0]?.object_id)
+  state.map.selected=selectedId
+  const selected=objects.find(o=>o.object_id===selectedId)
+  page.innerHTML=`<div class="gis-page"><div class="gis-title"><h1>GIS施工态势</h1><div class="map-legend"><span class="green">已完成</span><span class="orange">施工中</span><span class="gray">待施工</span><span class="red">异常点</span></div></div><div class="gis-layout">
+    <section class="gis-map" id="map-stage">${buildSatelliteMap(corridor.gis,mapObjects,selectedId)}</section>
+    <aside class="gis-info"><section><h2>当前路段信息</h2><dl><dt>工程对象</dt><dd>${esc(selected?.object_id||'—')}</dd><dt>对象类型</dt><dd>${esc(selected?.object_type||'—')}</dd><dt>证据数量</dt><dd>${selected?.evidence_count||0} 条</dd><dt>完整率</dt><dd>${selected?Math.round(selected.completeness*100):0}%</dd><dt>当前状态</dt><dd>${esc(selected?.verification_status||'—')}</dd></dl></section><section><h2>关联信息</h2><dl><dt>GIS要素</dt><dd>${gis.features.length}</dd><dt>关联问题</dt><dd>${selected?.issue_count||0} 项</dd><dt>空间位置</dt><dd>${selected?`${Number(selected.longitude).toFixed(6)}, ${Number(selected.latitude).toFixed(6)}`:'—'}</dd></dl><button class="btn primary" id="open-map-object" ${selected?'':'disabled'}>查看工程对象档案</button></section></aside>
+  </div></div>`
+  document.querySelectorAll('#map-stage [data-object]').forEach(node=>node.onclick=()=>{state.map.selected=node.dataset.object;drawMapPage()})
+  bindSatelliteControls(document.querySelector('#map-stage'))
+  const open=document.querySelector('#open-map-object');if(open)open.onclick=()=>openObjectLedger(selectedId)
+}
+
+function sceneEmpty(title){
+  return `<div class="scene-empty"><div>▶</div><strong>${title}</strong><span>尚无已完成的施工影像分析记录</span><button class="btn primary" data-legacy-route="collection">进入施工数据采集</button></div>`
+}
+
+function sceneFrameCanvas(frame){
+  if(!frame?.frame_url)return sceneEmpty('暂无关键施工影像')
+  const boxes=(frame.detected_objects||[]).filter(item=>item&&Array.isArray(item.bbox_xyxy))
+  return `<div class="scene-frame" data-yolo-canvas><img src="${esc(frame.frame_url)}" alt="关键施工影像">${boxes.map(item=>`<div class="yolo-box" data-bbox="${item.bbox_xyxy.map(Number).join(',')}" style="--box-color:${boxColors[item.label]||'#25d366'}"><span>${esc(displayObjectName(item.label))} ${Math.round(Number(item.confidence||0)*100)}%</span></div>`).join('')}<div class="frame-timecode">${fmtVideoTime(frame.timestamp)}</div></div>`
+}
+
+async function renderSceneSupervision(taskType){
+  const tasks=await request('/api/management/analysis-tasks')
+  const task=tasks.find(item=>item.task_type===taskType)
+  const isAir=taskType==='air_blowing'
+  const title=isAir?'气吹光缆智能监管':'光纤熔接质量验真'
+  let detail=null
+  if(task)detail=await request(`/api/management/analysis-jobs/${encodeURIComponent(task.analysis_job_id)}/visualization`).catch(()=>null)
+  const frames=detail?.frames||[]
+  const frame=frames.find(item=>(item.detected_objects||[]).some(obj=>obj?.bbox_xyxy))||frames[0]
+  const summary=detail?.summary||{}
+  const stages=taskStages[taskType]||[]
+  const completed=new Set(frames.map(item=>item.stage))
+  const detections=frames.flatMap(item=>item.detected_objects||[])
+  const unique=[...new Set(detections.map(item=>typeof item==='string'?item:item.label).filter(Boolean))]
+  const risks=frames.flatMap(item=>item.risk||[])
+  page.innerHTML=`<div class="scene-page"><h1>${title}</h1><div class="scene-main">
+    <section class="scene-visual"><header><b>${task?esc(task.video_file||task.name):'施工影像'}</b><span>${task?esc(task.status):'待采集'}</span></header>${frame?sceneFrameCanvas(frame):sceneEmpty(isAir?'请上传气吹施工视频':'请上传光纤熔接施工视频')}</section>
+    <aside class="scene-summary">
+      <section><h2>施工任务信息</h2><dl><dt>施工任务</dt><dd>${esc(task?.name||(isAir?'光缆气吹施工':'光纤熔接施工'))}</dd><dt>分析状态</dt><dd>${esc(task?.status||'待采集')}</dd><dt>证据数量</dt><dd>${Number(summary.frame_count||task?.evidence_count||0)}</dd><dt>工序完成</dt><dd>${Number(summary.completed_stage_count||completed.size)}/${stages.length}</dd></dl></section>
+      <section><h2>施工对象识别</h2>${unique.length?unique.map(label=>`<div class="metric-line"><span>${esc(displayObjectName(label))}</span><b>${detections.filter(item=>(typeof item==='string'?item:item.label)===label).length}</b></div>`).join(''):'<div class="empty compact">暂无识别结果</div>'}</section>
+      <section><h2>验真结果</h2><div class="scene-verdict ${verdictClass(summary.conclusion)}">${esc(summary.conclusion||'待补证')}</div></section>
+    </aside></div>
+    <section class="stage-strip"><h2>工序监测</h2><div>${stages.map((stage,index)=>`<article class="${completed.has(stage)?'done':''}"><i>${completed.has(stage)?'✓':index+1}</i><strong>${stageNames[stage]}</strong><span>${completed.has(stage)?'已识别':'待识别'}</span></article>`).join('')}</div>${risks.length?`<p class="scene-risk">风险提示：${risks.map(r=>riskNames[r.risk]||r.risk).join('、')}</p>`:''}</section>
+  </div>`
+  document.querySelectorAll('[data-legacy-route]').forEach(button=>button.onclick=()=>navigate(button.dataset.legacyRoute))
+  positionYoloBoxes()
+}
+
+async function renderSafetySupervision(){
+  const [model,tasks]=await Promise.all([request('/api/ai/safety/status'),request('/api/management/analysis-tasks')])
+  const details=await Promise.all(tasks.slice(0,4).map(t=>request(`/api/management/analysis-jobs/${encodeURIComponent(t.analysis_job_id)}/visualization`).catch(()=>null)))
+  const frames=details.filter(Boolean).flatMap(d=>d.frames||[])
+  const safetyLabels=['worker','safety_helmet','safety_vest','no_safety_helmet']
+  const detections=frames.flatMap(frame=>(frame.detected_objects||[]).filter(obj=>safetyLabels.includes(obj?.label)))
+  const riskFrame=frames.find(frame=>(frame.detected_objects||[]).some(obj=>obj?.label==='no_safety_helmet'))||frames.find(frame=>(frame.detected_objects||[]).some(obj=>safetyLabels.includes(obj?.label)))
+  const counts=Object.fromEntries(safetyLabels.map(label=>[label,detections.filter(obj=>obj.label===label).length]))
+  page.innerHTML=`<div class="scene-page"><h1>施工安全监管</h1><div class="scene-main safety-layout">
+    <section class="scene-visual"><header><b>施工现场安全影像</b><span>${riskFrame?'已分析':'待采集'}</span></header>${riskFrame?sceneFrameCanvas(riskFrame):sceneEmpty('暂无安全监管影像结果')}</section>
+    <aside class="scene-summary"><section><h2>安全识别统计</h2>${[['worker','人员'],['safety_helmet','安全帽'],['safety_vest','反光背心'],['no_safety_helmet','未佩戴安全帽']].map(([label,name])=>`<div class="safety-count ${label==='no_safety_helmet'?'danger':''}"><span>${name}</span><strong>${counts[label]}</strong></div>`).join('')}</section><section><h2>运行状态</h2><div class="system-ready"><i></i>${model.runtime_available&&model.weights_available?'安全监管能力可运行':'安全监管能力未就绪'}</div></section></aside>
+    </div><div class="scene-bottom-grid"><section class="compact-card"><h2>事件详情</h2><dl><dt>风险类型</dt><dd>${counts.no_safety_helmet?'未佩戴安全帽':'暂无风险事件'}</dd><dt>关联证据</dt><dd>${riskFrame?.evidence_id||'—'}</dd><dt>发生时间</dt><dd>${riskFrame?fmtVideoTime(riskFrame.timestamp):'—'}</dd></dl></section><section class="compact-card"><h2>处置状态</h2><div class="scene-verdict ${counts.no_safety_helmet?'warn':'pass'}">${counts.no_safety_helmet?'待整改':'未发现风险'}</div><button class="btn primary" data-legacy-route="issues">查看问题整改闭环</button></section></div></div>`
+  document.querySelectorAll('[data-legacy-route]').forEach(button=>button.onclick=()=>navigate(button.dataset.legacyRoute))
+  positionYoloBoxes()
+}
+
+async function renderAuditPage(){
+  const [summary,overview,safety]=await Promise.all([request('/api/summary'),request('/api/management/platform-overview'),request('/api/ai/safety/status')])
+  const governance=summary.project.data_governance||{}
+  page.innerHTML=`<div class="audit-page"><h1>数据来源与审计</h1><div class="audit-columns">
+    <section class="compact-card"><h2>数据来源说明</h2><dl><dt>施工视频</dt><dd>${overview.layers.collected_count} 条采集记录</dd><dt>工程对象</dt><dd>${overview.layers.object_count} 个</dd><dt>GIS工程数据</dt><dd>${overview.layers.gis_feature_count} 个要素</dd><dt>影像证据</dt><dd>${overview.layers.evidence_count} 条</dd><dt>安全训练数据</dt><dd>${safety.training?.dataset?.image_count||0} 张图像</dd></dl></section>
+    <section class="compact-card"><h2>审计信息</h2><dl><dt>数据集校验</dt><dd>${safety.training?.dataset_yaml_sha256?'已记录':'未记录'}</dd><dt>标注统计</dt><dd>${safety.training?.dataset?.box_count||0} 个目标框</dd><dt>验证结果</dt><dd>${safety.training?.validation_metrics?'已记录':'未记录'}</dd><dt>测试结果</dt><dd>${safety.training?.test_metrics?'已记录':'未记录'}</dd><dt>数据处理</dt><dd>${esc((governance.processing||[]).join('、'))}</dd></dl></section>
+  </div><section class="compact-card audit-wide"><h2>数据治理原则</h2><p>${esc(governance.audit_note||'所有施工数据、分析结果和验真结论均保留可追溯记录。')}</p><div class="audit-actions"><button class="btn" data-legacy-route="collection">施工数据采集</button><button class="btn" data-legacy-route="evidence">影像证据中心</button><button class="btn" data-legacy-route="ledger">工程对象台账</button><button class="btn primary" data-legacy-route="analysis">施工影像分析</button></div></section></div>`
+  document.querySelectorAll('[data-legacy-route]').forEach(button=>button.onclick=()=>navigate(button.dataset.legacyRoute))
+}
+
+async function init(){try{await loadProject();setInterval(updateClock,1000);const route=location.hash.replace('#','')||'dashboard';navigate(['dashboard','map','air','splicing','safety','issues','delivery','audit','collection','analysis','verification','evidence','ledger'].includes(route)?route:'dashboard')}catch(error){page.innerHTML=`<div class="panel"><div class="panel-body"><h2>系统初始化失败</h2><p>${esc(error.message)}</p></div></div>`}}
 init()
